@@ -53,6 +53,7 @@ function renderCarnetAttendance(group, term, students) {
     </tr></thead><tbody id="attendanceRows"></tbody></table></div>
     <div class="carnet-footer">
       <button id="finishAttendance" class="primary" type="button">Enregistrer l’appel</button>
+      <a class="action tool-blue" href="https://gvs.vauban.lu/login" target="_blank" rel="noopener noreferrer">Connexion Vauban pour PRONOTE</a>
       <p id="attendanceMessage" role="status"></p>
     </div>
   </div>

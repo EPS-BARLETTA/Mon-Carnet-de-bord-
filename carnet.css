@@ -1,0 +1,40 @@
+.carnet { max-width: 1150px; }
+.carnet-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.carnet-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-block: 10px; }
+.carnet-tabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  text-decoration: none;
+  font-weight: 650;
+}
+.carnet-tabs a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
+.carnet-sections a[aria-current="page"] { background: #e2edf9; border-color: #99b3d3; color: #203f65; }
+.carnet-panel { border: 1px solid var(--line); border-radius: 16px; padding: clamp(12px, 2vw, 22px); background: white; }
+.carnet-controls, .carnet-footer { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+.carnet-controls label { min-width: min(190px, 100%); }
+.carnet-controls input, .carnet-controls select { display: block; width: 100%; margin-top: 4px; }
+.carnet-footer { margin-top: 15px; align-items: center; }
+.carnet-footer p { flex-basis: 100%; margin: 0; }
+.carnet-footer p:empty { display: none; }
+.attendance-summary { margin-block: 12px; padding: 11px; background: #e5f0e8; color: #204e35; border-radius: 8px; font-weight: 700; }
+.carnet-table-wrap { overflow-x: auto; }
+.carnet-table { width: 100%; border-collapse: collapse; }
+.carnet-table th, .carnet-table td { padding: 8px; text-align: left; border-bottom: 1px solid var(--line); }
+.carnet-table thead { background: #eef2f5; }
+.carnet-table small { display: block; margin-top: 5px; color: var(--quiet); }
+.carnet-absent { background: #fff5f5; }
+.carnet-student { display: flex; align-items: center; gap: 8px; min-width: 135px; }
+.attendance-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.attendance-status { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; padding-inline: 8px; }
+.attendance-status[aria-pressed="false"] { background: white; border-color: var(--line); color: var(--quiet); }
+.attendance-status[aria-pressed="true"] { box-shadow: inset 0 0 0 1px currentColor; }
+.tool-red { color: #8d2730; background: #f9e1e4; border-color: #d68c93; }
+.grade-table td input { width: 90px; }
+.carnet-average { color: #204e35; font-weight: 700; }
+#pronoteUrl, #evaluationName { width: 100%; }
+#evaluationName { margin-bottom: 9px; }

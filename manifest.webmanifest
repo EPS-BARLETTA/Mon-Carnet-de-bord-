@@ -1,0 +1,9 @@
+{
+  "name": "Mon Carnet de bord EPS",
+  "short_name": "Carnet EPS",
+  "start_url": "./",
+  "display": "standalone",
+  "lang": "fr",
+  "background_color": "#f4f6f0",
+  "theme_color": "#14293e"
+}

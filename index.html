@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#14293e">
   <meta name="description" content="Appel, notes et tableau blanc des classes en EPS.">
   <title>Mon Carnet de bord EPS</title>
-  <link rel="stylesheet" href="./app.css?v=12">
+  <link rel="stylesheet" href="./app.css?v=13">
   <link rel="stylesheet" href="./board.css?v=14">
   <link rel="manifest" href="./manifest.webmanifest">
   <script defer src="./portraits.js?v=8"></script>
@@ -14,13 +14,16 @@
   <script defer src="./capture.js?v=11"></script>
   <script defer src="./session.js?v=12"></script>
   <link rel="stylesheet" href="./carnet.css">
-  <script defer src="./carnet.js"></script>
-  <script defer src="./app.js?v=1"></script>
+  <script defer src="./carnet.js?v=2"></script>
+  <script defer src="./app.js?v=2"></script>
 </head>
 <body>
   <header class="app-header">
     <a href="#" class="brand">Mon Carnet de bord EPS</a>
-    <a id="navHome" href="#accueil" hidden>Accueil</a>
+    <nav class="app-links" aria-label="Navigation principale">
+      <a id="navHome" href="#accueil" hidden>Accueil</a>
+      <a href="#pronote">PRONOTE</a>
+    </nav>
   </header>
   <main id="content">
     <section class="cover">
@@ -28,6 +31,7 @@
         <h1>Mon Carnet de bord EPS</h1>
         <p>Fais l’appel, retrouve les notes et organise tes séances par classe.</p>
         <a href="#accueil" class="primary action">Ouvrir le carnet</a>
+        <a href="#personnaliser" class="cover-settings">Personnaliser l’accueil</a>
       </div>
       <div class="cover-art" aria-hidden="true"><div class="cover-court"></div><div class="cover-court"></div></div>
     </section>

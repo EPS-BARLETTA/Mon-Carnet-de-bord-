@@ -47,6 +47,7 @@ p { line-height: 1.5; }
   background: #fff;
 }
 .brand { font-weight: 780; text-decoration: none; }
+.app-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; }
 #content { width: min(1360px, 100%); margin-inline: auto; padding: clamp(14px, 3vw, 35px); }
 .cover {
   display: grid;
@@ -62,15 +63,35 @@ p { line-height: 1.5; }
 .cover-copy h1 { font-size: clamp(39px, 6vw, 85px); letter-spacing: -.05em; }
 .cover-copy p { max-width: 420px; margin: 20px 0 24px; color: #d6e4e1; }
 .cover-copy .action { color: #14293e; background: #cbe58f; }
+.cover-copy .cover-settings { display: block; margin-top: 16px; color: white; }
 .cover-art { display: grid; gap: 13px; padding: 11%; transform: rotate(-9deg); }
 .cover-court { position: relative; aspect-ratio: 2.05; border: 2px solid #fff; border-radius: 10px; background: #276b50; }
 .cover-court + .cover-court { background: #355c8d; }
+.cover-court:first-child { background: var(--personal-color, #276b50); }
 .cover-court::before, .cover-court::after { position: absolute; content: ""; inset: 0 50% 0 auto; border-left: 2px solid #fff; }
 .cover-court::after { inset: 0 20%; border-right: 2px solid #fff; }
 .route { margin: 1.5em auto; }
 .route h1 { font-size: clamp(28px, 5vw, 44px); margin: 10px 0 22px; }
 .route-head, .class-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .route-head { margin-bottom: 12px; }
+.home-heading {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 22px; padding: clamp(16px, 3vw, 26px); border-radius: 16px;
+  color: var(--personal-color); background: var(--personal-tint);
+}
+.home-heading h1, .home-heading p { margin: 0; overflow-wrap: anywhere; }
+.home-heading p { margin-top: 8px; }
+.home-settings { background: #fff; border: 1px solid var(--line); }
+.class-tile { border-inline-start: 5px solid var(--personal-color); background: var(--personal-tint); }
+.class-tile h2, .personalized-class .carnet-head h1 { color: var(--personal-color); overflow-wrap: anywhere; }
+.personalized-class .carnet-head {
+  border-inline-start: 5px solid var(--personal-color);
+  padding-inline: 14px; background: var(--personal-tint); border-radius: 12px;
+}
+.pronote-card + .pronote-card { margin-top: 12px; }
+.pronote-card p { margin-block: 4px; }
+.pronote-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 8px; }
+.pronote-actions .action:not(.primary) { border: 1px solid var(--line); }
 .menu-grid, .class-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(240px,100%),1fr)); gap: 16px; }
 .menu-card {
   display: block;

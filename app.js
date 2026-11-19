@@ -7,6 +7,19 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const today = () => new Date().toISOString().slice(0, 10);
 const STORAGE_KEY = 'mon-carnet-eps-v1';
+const HOME_KEY = 'mon-carnet-eps-accueil';
+const APPEARANCE_COLORS = {
+  vert: ['Vert', '#226047', '#e8f3eb'],
+  bleu: ['Bleu', '#254e82', '#e9f1fc'],
+  violet: ['Violet', '#65428b', '#f2eafb'],
+  terre: ['Terracotta', '#884630', '#faeee8'],
+  ardoise: ['Ardoise', '#425968', '#eaf0f4'],
+};
+const DEFAULT_HOME = {
+  title: 'Mon Carnet de bord EPS',
+  intro: 'Fais l’appel, retrouve les notes et organise tes séances par classe.',
+  color: 'vert',
+};
 const MAX_OPEN_BOARDS = 4;
 const content = $('content');
 const cover = content.innerHTML;
@@ -59,6 +72,70 @@ function download(name, data, type) {
 
 function classRoute(group) {
   return `#classe/${group.id}`;
+}
+
+function appearanceColor(value) {
+  return Object.hasOwn(APPEARANCE_COLORS, value) ? value : 'vert';
+}
+
+function appearanceOptions(value) {
+  return Object.entries(APPEARANCE_COLORS).map(([id, [label]]) =>
+    `<option value="${id}" ${appearanceColor(value) === id ? 'selected' : ''}>${label}</option>`).join('');
+}
+
+function appearanceStyle(color) {
+  const [, ink, tint] = APPEARANCE_COLORS[appearanceColor(color)];
+  return `--personal-color:${ink};--personal-tint:${tint}`;
+}
+
+function homeAppearance() {
+  try {
+    const settings = JSON.parse(localStorage.getItem(HOME_KEY) || '{}') || {};
+    return {
+      title: typeof settings.title === 'string' && settings.title.trim() ? settings.title.trim().slice(0, 70) : DEFAULT_HOME.title,
+      intro: typeof settings.intro === 'string' ? settings.intro.slice(0, 160) : DEFAULT_HOME.intro,
+      color: appearanceColor(settings.color),
+    };
+  } catch { return DEFAULT_HOME; }
+}
+
+function renderHomeSettings() {
+  const current = homeAppearance();
+  content.innerHTML = `<section class="route class-form">
+    <a class="back-link" href="#accueil">← Accueil</a>
+    <h1>Personnaliser l’accueil</h1>
+    <form class="card" id="homeAppearance">
+      <label for="homeTitle">Titre du carnet</label>
+      <input id="homeTitle" maxlength="70" required value="${esc(current.title)}">
+      <label for="homeIntro">Texte d’accueil</label>
+      <textarea id="homeIntro" rows="2" maxlength="160">${esc(current.intro)}</textarea>
+      <label for="homeColor">Couleur de l’accueil</label>
+      <select id="homeColor">${appearanceOptions(current.color)}</select>
+      <div class="actions">
+        <button id="homeReset" type="button">Rétablir les valeurs par défaut</button>
+        <button class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </section>`;
+  $('homeReset').onclick = () => {
+    $('homeTitle').value = DEFAULT_HOME.title;
+    $('homeIntro').value = DEFAULT_HOME.intro;
+    $('homeColor').value = DEFAULT_HOME.color;
+  };
+  $('homeAppearance').onsubmit = event => {
+    event.preventDefault();
+    try {
+      localStorage.setItem(HOME_KEY, JSON.stringify({
+        title: $('homeTitle').value.trim() || DEFAULT_HOME.title,
+        intro: $('homeIntro').value.trim(),
+        color: appearanceColor($('homeColor').value),
+      }));
+    } catch {
+      notify('Enregistrement impossible dans ce navigateur.');
+      return;
+    }
+    location.hash = '#accueil';
+  };
 }
 
 function boardRoute(group, board) {
@@ -289,8 +366,12 @@ function renderOpenBoards(group, boards, session = null, hidden = []) {
 }
 
 function renderMenu() {
-  content.innerHTML = `<section class="route">
-    <h1>Mes tableaux de classe</h1>
+  const home = homeAppearance();
+  content.innerHTML = `<section class="route home-menu" style="${appearanceStyle(home.color)}">
+    <header class="home-heading">
+      <div><h1>${esc(home.title)}</h1>${home.intro ? `<p>${esc(home.intro)}</p>` : ''}</div>
+      <a class="action home-settings" href="#personnaliser">Personnaliser l’accueil</a>
+    </header>
     <div class="menu-grid">
       <a class="menu-card" href="#classes"><span class="menu-icon" aria-hidden="true">▦</span><h2>Mes classes</h2><p>Retrouve tes classes et leurs tableaux.</p></a>
       <a class="menu-card" href="#creer"><span class="menu-icon" aria-hidden="true">+</span><h2>Créer une classe</h2><p>Importe un trombinoscope PRONOTE ou saisis une liste.</p></a>
@@ -301,7 +382,7 @@ function renderMenu() {
 function renderDirectory() {
   content.innerHTML = `<section class="route">
     <div class="route-head"><h1>Mes classes</h1><a class="primary action" href="#creer">Créer une classe</a></div>
-    ${classes.length ? `<div class="class-grid">${classes.map(group => `<a class="menu-card class-tile" href="${classRoute(group)}">
+    ${classes.length ? `<div class="class-grid">${classes.map(group => `<a class="menu-card class-tile" style="${appearanceStyle(group.color)}" href="${classRoute(group)}">
       <h2>${esc(group.name)}</h2><p>${group.students.length} élève${group.students.length === 1 ? '' : 's'} · ${group.boards.length} tableau${group.boards.length === 1 ? '' : 'x'}</p>
     </a>`).join('')}</div>` : '<p>Aucune classe pour le moment. Tu peux en créer une avec ton trombinoscope.</p>'}
   </section>`;
@@ -310,11 +391,13 @@ function renderDirectory() {
 function renderClassForm(group) {
   const heading = group ? 'Élèves de ' + group.name : 'Créer une classe';
   content.innerHTML = `<section class="route class-form">
-    <a class="back-link" href="${group ? classRoute(group) : '#accueil'}">← ${group ? 'Tableaux de la classe' : 'Accueil'}</a>
+    <a class="back-link" href="${group ? classRoute(group) : '#accueil'}">← ${group ? 'Carnet de classe' : 'Accueil'}</a>
     <h1>${esc(heading)}</h1>
     <form id="classForm" class="card">
       <label for="className">Nom de la classe</label>
       <input id="className" maxlength="80" required value="${esc(group?.name || '')}" placeholder="Ex. 6e B">
+      <label for="classColor">Couleur de la classe</label>
+      <select id="classColor">${appearanceOptions(group?.color)}</select>
       <div class="roster-import">
         <button id="importPortraits" class="primary" type="button">Importer un trombinoscope</button>
         <input type="file" id="pictureInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden>
@@ -348,7 +431,7 @@ function renderClassForm(group) {
 
   function saveRoster(students, reportError) {
     const previous = classes;
-    const updated = {...group, id: group?.id || uid(), name: name.value.trim(), students,
+    const updated = {...group, id: group?.id || uid(), name: name.value.trim(), color: appearanceColor($('classColor').value), students,
       boards: group?.boards || [{id: 'principal', name: 'Tableau principal'}]};
     classes = group ? classes.map(c => c.id === group.id ? updated : c) : [...classes, updated];
     if (!save(reportError)) {
@@ -408,8 +491,21 @@ function renderClassForm(group) {
 function render() {
   const [page, id, subpage, boardId, hiddenIds] = location.hash.slice(1).split('/');
   $('navHome').hidden = !page || page === 'accueil';
+  const home = homeAppearance();
+  document.querySelector('.brand').textContent = home.title;
+  document.title = home.title;
   if (!page) {
     content.innerHTML = cover;
+    const hero = content.querySelector('.cover');
+    hero.style.cssText = appearanceStyle(home.color);
+    hero.querySelector('h1').textContent = home.title;
+    const intro = hero.querySelector('p');
+    intro.textContent = home.intro;
+    intro.hidden = !home.intro;
+  } else if (page === 'personnaliser') {
+    renderHomeSettings();
+  } else if (page === 'pronote') {
+    renderPronoteAccess();
   } else if (page === 'creer') {
     renderClassForm();
   } else if (page === 'classes') {

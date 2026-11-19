@@ -177,11 +177,12 @@ dialog textarea { margin-block: 6px; }
 }
 
 .class-grid { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 10px; }
+.class-directory-grid { grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 14px; }
 .class-tile {
-  border-radius: 8px; padding: 14px 16px; border-inline-start: 5px solid var(--personal-color);
+  border-radius: 8px; padding: 20px; min-height: 116px; border-inline-start: 5px solid var(--personal-color);
   background: var(--personal-tint); overflow-wrap: anywhere;
 }
-.class-tile h2 { font-size: 21px; }
+.class-tile h2 { font-size: 23px; }
 .class-tile p { margin-top: 4px; }
 .board-directory-card { display: flex; align-items: center; gap: 10px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 8px; background: white; }
 .board-directory-card a { flex: 1; align-content: center; min-height: 44px; overflow-wrap: anywhere; font-weight: 700; }

@@ -558,7 +558,7 @@ function renderMenu() {
 function renderDirectory() {
   content.innerHTML = `<section class="route">
     <div class="route-head"><h1>Mes classes</h1><a class="primary action" href="#creer">Créer une classe</a></div>
-    ${classes.length ? `<div class="class-grid">${classes.map(group => `<a class="menu-card class-tile photo-banner" style="${appearanceStyle(group.color)}" href="${classRoute(group)}">
+    ${classes.length ? `<div class="class-grid class-directory-grid">${classes.map(group => `<a class="menu-card class-tile photo-banner" style="${appearanceStyle(group.color)}" href="${classRoute(group)}">
       ${bannerPhoto(group.banner)}
       <div><h2>${esc(group.name)}</h2><p>${group.students.length} élève${group.students.length === 1 ? '' : 's'} · ${group.boards.length} tableau${group.boards.length === 1 ? '' : 'x'}</p></div>
     </a>`).join('')}</div>` : '<p>Aucune classe pour le moment. Tu peux en créer une avec ton trombinoscope.</p>'}

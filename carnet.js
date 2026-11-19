@@ -47,6 +47,52 @@ function renderCarnet(group, tab, term) {
   else renderCarnetAttendance(group, term, students);
 }
 
+function carnetPortraitTrigger(student, photo) {
+  if (photo.tagName !== 'IMG') return photo;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'carnet-portrait-trigger';
+  button.setAttribute('aria-label', 'Agrandir le portrait de ' + student.name);
+  button.setAttribute('aria-haspopup', 'dialog');
+  button.title = 'Double-clique ou touche deux fois pour agrandir';
+  button.append(photo);
+
+  function showPortrait() {
+    let dialog = $('carnetPortraitDialog');
+    if (!dialog) {
+      dialog = document.createElement('dialog');
+      dialog.id = 'carnetPortraitDialog';
+      dialog.className = 'board-portrait-dialog';
+      dialog.setAttribute('aria-labelledby', 'carnetPortraitName');
+      dialog.innerHTML = `<h2 id="carnetPortraitName"></h2>
+        <img alt="">
+        <form method="dialog"><button autofocus>Fermer le portrait</button></form>`;
+      $('carnetContent').append(dialog);
+    }
+    if (dialog.open) return;
+    $('carnetPortraitName').textContent = student.name;
+    dialog.querySelector('img').src = photo.src;
+    dialog.showModal();
+  }
+
+  let lastTap;
+  button.addEventListener('pointerup', event => {
+    if (event.pointerType !== 'touch' || !event.isPrimary) return;
+    if (lastTap !== undefined && event.timeStamp - lastTap <= 400) {
+      lastTap = undefined;
+      showPortrait();
+    } else {
+      lastTap = event.timeStamp;
+    }
+  });
+  button.addEventListener('dblclick', showPortrait);
+  button.addEventListener('click', event => {
+    if (event.detail === 0) showPortrait();
+  });
+  return button;
+}
+
 function renderClassTrombinoscope(students) {
   const panel = $('carnetContent');
   panel.innerHTML = `<section class="carnet-panel">
@@ -61,7 +107,7 @@ function renderClassTrombinoscope(students) {
     else portrait.textContent = student.name.trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toLocaleUpperCase('fr');
     const name = document.createElement('strong');
     name.textContent = student.name;
-    item.append(portrait, name);
+    item.append(carnetPortraitTrigger(student, portrait), name);
     return item;
   }));
 }
@@ -181,7 +227,8 @@ function renderCarnetAttendance(group, term, students) {
       const row = document.createElement('tr');
       row.classList.toggle('carnet-absent', Boolean(state.absent));
       row.innerHTML = `<th scope="row"><span class="carnet-student"></span></th><td></td>`;
-      row.querySelector('.carnet-student').append(RosterPortraits.photo(student.portrait), document.createTextNode(student.name));
+      const photo = RosterPortraits.photo(student.portrait);
+      row.querySelector('.carnet-student').append(carnetPortraitTrigger(student, photo), document.createTextNode(student.name));
       const actions = document.createElement('div');
       actions.className = 'attendance-actions';
       function status(label, icon, color, pressed, apply) {

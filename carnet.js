@@ -24,7 +24,8 @@ function renderCarnet(group, tab, term) {
   const students = [...group.students].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
   content.innerHTML = `<section class="route carnet personalized-class" style="${appearanceStyle(group.color)}">
     <a class="back-link" href="#classes">← Mes classes</a>
-    <header class="carnet-head">
+    <header class="carnet-head photo-banner">
+      ${bannerPhoto(group.banner)}
       <h1>${esc(group.name)}</h1>
       <a href="${root}/eleves">Modifier la classe et le trombinoscope</a>
     </header>
@@ -33,11 +34,14 @@ function renderCarnet(group, tab, term) {
     <nav class="carnet-tabs carnet-sections" aria-label="Carnet">
       <a href="${root}/appel/${term}" ${tab === 'appel' ? 'aria-current="page"' : ''}>Appel</a>
       <a href="${root}/notes/${term}" ${tab === 'notes' ? 'aria-current="page"' : ''}>Notes</a>
+      <a href="${root}/bulletins/${term}" ${tab === 'bulletins' ? 'aria-current="page"' : ''}>Bulletins</a>
+      ${group.principal === true ? `<a href="${root}/conseil/${term}" ${tab === 'conseil' ? 'aria-current="page"' : ''}>Prof principal</a>` : ''}
       <a href="${root}/tableau-blanc/${term}">Tableau blanc</a>
     </nav>
     <div id="carnetContent"></div>
   </section>`;
   if (tab === 'notes') renderCarnetGrades(group, term, students);
+  else if (tab === 'bulletins' || tab === 'conseil') renderBulletins(group, term, students, tab === 'conseil');
   else renderCarnetAttendance(group, term, students);
 }
 

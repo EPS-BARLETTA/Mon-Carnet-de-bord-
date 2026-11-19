@@ -1,7 +1,7 @@
-const CACHE = 'mon-carnet-eps-v8';
+const CACHE = 'mon-carnet-eps-v9';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './app.js', './app.css', './board.js', './board.css', './capture.js', './session.js', './carnet.js', './carnet.css',
-  './backup.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',
+  './backup.js', './bulletins.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',
   './ocr/core/tesseract-core-lstm.js', './ocr/client/tesseract-core-lstm.wasm', './ocr/lang/fra.traineddata.gz',
 ];
 self.addEventListener('install', event => {

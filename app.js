@@ -25,6 +25,7 @@ const DEFAULT_HOME = {
   intro: 'Fais l’appel, retrouve les notes et organise tes séances par classe.',
   color: 'vert',
   photo: '',
+  menuPhoto: '',
 };
 const MAX_OPEN_BOARDS = 4;
 const content = $('content');
@@ -130,42 +131,38 @@ function homeAppearance() {
       title: typeof settings.title === 'string' && settings.title.trim() ? settings.title.trim().slice(0, 70) : DEFAULT_HOME.title,
       intro: typeof settings.intro === 'string' ? settings.intro.slice(0, 160) : DEFAULT_HOME.intro,
       color: appearanceColor(settings.color),
-      photo: typeof settings.photo === 'string' && settings.photo.length <= 1000000 &&
-        /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(settings.photo) ? settings.photo : '',
+      photo: appearancePhoto(settings.photo),
+      menuPhoto: appearancePhoto(settings.menuPhoto),
     };
   } catch { return DEFAULT_HOME; }
 }
 
-function renderHomeSettings() {
-  const current = homeAppearance();
-  content.innerHTML = `<section class="route class-form">
-    <a class="back-link" href="#accueil">← Accueil</a>
-    <h1>Personnaliser l’accueil</h1>
-    <form class="card" id="homeAppearance">
-      <label for="homeTitle">Titre du carnet</label>
-      <input id="homeTitle" maxlength="70" required value="${esc(current.title)}">
-      <label for="homeIntro">Texte d’accueil</label>
-      <textarea id="homeIntro" rows="2" maxlength="160">${esc(current.intro)}</textarea>
-      <label for="homeColor">Couleur de l’accueil</label>
-      <select id="homeColor">${appearanceOptions(current.color)}</select>
-      <label for="homePhoto">Photo d’accueil</label>
-      <input id="homePhoto" type="file" accept="image/*">
-      <img id="homePhotoPreview" class="home-photo-preview" alt="Aperçu de la photo d’accueil" hidden>
-      <button id="homePhotoRemove" type="button" hidden>Retirer la photo</button>
-      <p id="homePhotoStatus" class="muted" role="status" hidden></p>
-      <div class="actions">
-        <button id="homeReset" type="button">Rétablir les valeurs par défaut</button>
-        <button id="homeSave" class="primary">Enregistrer</button>
-      </div>
-    </form>
-  </section>`;
-  let photo = current.photo;
+function appearancePhoto(value) {
+  return typeof value === 'string' && value.length <= 1000000 &&
+    /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : '';
+}
+
+function bannerPhoto(value) {
+  const photo = appearancePhoto(value);
+  return photo ? `<img class="banner-photo" src="${photo}" alt="">` : '';
+}
+
+function photoFields(prefix, label) {
+  return `<label for="${prefix}Photo">${label}</label>
+    <input id="${prefix}Photo" type="file" accept="image/*">
+    <img id="${prefix}PhotoPreview" class="home-photo-preview" alt="Aperçu" hidden>
+    <button id="${prefix}PhotoRemove" type="button" hidden>Retirer la photo</button>
+    <p id="${prefix}PhotoStatus" class="muted" role="status" hidden></p>`;
+}
+
+function photoPicker(prefix, initial, maxSide = 1280) {
+  let photo = appearancePhoto(initial);
+  let pending = false;
   let photoRequest = 0;
-  const fileInput = $('homePhoto');
-  const preview = $('homePhotoPreview');
-  const remove = $('homePhotoRemove');
-  const status = $('homePhotoStatus');
-  const saveButton = $('homeSave');
+  const fileInput = $(prefix + 'Photo');
+  const preview = $(prefix + 'PhotoPreview');
+  const remove = $(prefix + 'PhotoRemove');
+  const status = $(prefix + 'PhotoStatus');
   function showPhoto() {
     preview.hidden = remove.hidden = !photo;
     if (photo) preview.src = photo;
@@ -175,7 +172,7 @@ function renderHomeSettings() {
     photoRequest++;
     photo = '';
     status.hidden = true;
-    saveButton.disabled = false;
+    pending = false;
     showPhoto();
   }
   remove.onclick = clearPhoto;
@@ -184,13 +181,13 @@ function renderHomeSettings() {
     fileInput.value = '';
     if (!file) return;
     const request = ++photoRequest;
-    saveButton.disabled = true;
+    pending = true;
     status.hidden = false;
     status.textContent = 'Préparation de la photo…';
     try {
       if (file.size > 30 * 1024 * 1024) throw new Error('La photo dépasse 30 Mo.');
       const image = await imageFromFile(file);
-      const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+      const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
       const canvas = rosterCanvas(Math.max(1, Math.round(image.naturalWidth * scale)), Math.max(1, Math.round(image.naturalHeight * scale)));
       const context = canvas.getContext('2d');
       context.fillStyle = '#fff';
@@ -205,32 +202,59 @@ function renderHomeSettings() {
     } catch (error) {
       if (request === photoRequest) status.textContent = error.message || 'Impossible d’ouvrir la photo.';
     } finally {
-      if (request === photoRequest) saveButton.disabled = false;
+      if (request === photoRequest) pending = false;
     }
   };
+  showPhoto();
+  return {value: () => photo, busy: () => pending, clear: clearPhoto};
+}
+
+function renderHomeSettings() {
+  const current = homeAppearance();
+  content.innerHTML = `<section class="route class-form">
+    <a class="back-link" href="#accueil">← Accueil</a>
+    <h1>Personnaliser l’accueil</h1>
+    <form class="card" id="homeAppearance">
+      <label for="homeTitle">Titre du carnet</label>
+      <input id="homeTitle" maxlength="70" required value="${esc(current.title)}">
+      <label for="homeIntro">Texte d’accueil</label>
+      <textarea id="homeIntro" rows="2" maxlength="160">${esc(current.intro)}</textarea>
+      <label for="homeColor">Couleur de l’accueil</label>
+      <select id="homeColor">${appearanceOptions(current.color)}</select>
+      ${photoFields('home', 'Photo de la page de garde')}
+      ${photoFields('menu', 'Fond de l’accueil du carnet')}
+      <div class="actions">
+        <button id="homeReset" type="button">Rétablir les valeurs par défaut</button>
+        <button id="homeSave" class="primary">Enregistrer</button>
+      </div>
+    </form>
+  </section>`;
+  const coverPhoto = photoPicker('home', current.photo);
+  const menuPhoto = photoPicker('menu', current.menuPhoto, 1000);
   $('homeReset').onclick = () => {
     $('homeTitle').value = DEFAULT_HOME.title;
     $('homeIntro').value = DEFAULT_HOME.intro;
     $('homeColor').value = DEFAULT_HOME.color;
-    clearPhoto();
+    coverPhoto.clear();
+    menuPhoto.clear();
   };
   $('homeAppearance').onsubmit = event => {
     event.preventDefault();
-    if (saveButton.disabled) return;
+    if (coverPhoto.busy() || menuPhoto.busy()) { notify('La photo est en cours de préparation.'); return; }
     try {
       localStorage.setItem(HOME_KEY, JSON.stringify({
         title: $('homeTitle').value.trim() || DEFAULT_HOME.title,
         intro: $('homeIntro').value.trim(),
         color: appearanceColor($('homeColor').value),
-        photo,
+        photo: coverPhoto.value(),
+        menuPhoto: menuPhoto.value(),
       }));
     } catch {
       notify('Enregistrement impossible dans ce navigateur.');
       return;
     }
-    location.hash = '';
+    location.hash = '#accueil';
   };
-  showPhoto();
 }
 
 function boardRoute(group, board) {
@@ -463,7 +487,8 @@ function renderOpenBoards(group, boards, session = null, hidden = []) {
 function renderMenu() {
   const home = homeAppearance();
   content.innerHTML = `<section class="route home-menu" style="${appearanceStyle(home.color)}">
-    <header class="home-heading">
+    <header class="home-heading photo-banner">
+      ${bannerPhoto(home.menuPhoto)}
       <div><h1>${esc(home.title)}</h1>${home.intro ? `<p>${esc(home.intro)}</p>` : ''}</div>
       <a class="action home-settings" href="#personnaliser">Personnaliser l’accueil</a>
     </header>
@@ -477,8 +502,9 @@ function renderMenu() {
 function renderDirectory() {
   content.innerHTML = `<section class="route">
     <div class="route-head"><h1>Mes classes</h1><a class="primary action" href="#creer">Créer une classe</a></div>
-    ${classes.length ? `<div class="class-grid">${classes.map(group => `<a class="menu-card class-tile" style="${appearanceStyle(group.color)}" href="${classRoute(group)}">
-      <h2>${esc(group.name)}</h2><p>${group.students.length} élève${group.students.length === 1 ? '' : 's'} · ${group.boards.length} tableau${group.boards.length === 1 ? '' : 'x'}</p>
+    ${classes.length ? `<div class="class-grid">${classes.map(group => `<a class="menu-card class-tile photo-banner" style="${appearanceStyle(group.color)}" href="${classRoute(group)}">
+      ${bannerPhoto(group.banner)}
+      <div><h2>${esc(group.name)}</h2><p>${group.students.length} élève${group.students.length === 1 ? '' : 's'} · ${group.boards.length} tableau${group.boards.length === 1 ? '' : 'x'}</p></div>
     </a>`).join('')}</div>` : '<p>Aucune classe pour le moment. Tu peux en créer une avec ton trombinoscope.</p>'}
   </section>`;
 }
@@ -493,6 +519,8 @@ function renderClassForm(group) {
       <input id="className" maxlength="80" required value="${esc(group?.name || '')}" placeholder="Ex. 6e B">
       <label for="classColor">Couleur de la classe</label>
       <select id="classColor">${appearanceOptions(group?.color || nextClassColor(classes))}</select>
+      ${photoFields('classBanner', 'Fond du bandeau de la classe')}
+      <label class="choice-line"><input id="classPrincipal" type="checkbox" ${group?.principal === true ? 'checked' : ''}> Je suis professeur principal de cette classe</label>
       <div class="roster-import">
         <button id="importPortraits" class="primary" type="button">Importer un trombinoscope</button>
         <input type="file" id="pictureInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden>
@@ -506,8 +534,10 @@ function renderClassForm(group) {
   </section>`;
   const name = $('className');
   const file = $('pictureInput');
+  const photo = photoPicker('classBanner', group?.banner, 800);
 
   function validName() {
+    if (photo.busy()) { notify('La photo est en cours de préparation.'); return false; }
     name.setCustomValidity(name.value.trim() ? '' : 'Indique le nom de la classe.');
     return name.reportValidity();
   }
@@ -528,6 +558,7 @@ function renderClassForm(group) {
     const previous = classes;
     const updated = {...group, id: group?.id || uid(), name: name.value.trim(),
       color: appearanceColor($('classColor').value), colorAssigned: true, students,
+      banner: photo.value(), principal: $('classPrincipal').checked,
       boards: group?.boards || [{id: 'principal', name: 'Tableau principal'}]};
     classes = group ? classes.map(c => c.id === group.id ? updated : c) : [...classes, updated];
     if (!save(reportError)) {
@@ -618,8 +649,9 @@ function render() {
     const group = classes.find(c => c.id === id);
     if (!group) {
       renderDirectory();
-    } else if (!subpage || subpage === 'appel' || subpage === 'notes') {
-      renderCarnet(group, subpage === 'notes' ? 'notes' : 'appel', ['1', '2', '3'].includes(boardId) ? boardId : '1');
+    } else if (!subpage || ['appel', 'notes', 'bulletins', 'conseil'].includes(subpage)) {
+      const tab = subpage === 'conseil' && group.principal !== true ? 'bulletins' : subpage || 'appel';
+      renderCarnet(group, tab, ['1', '2', '3'].includes(boardId) ? boardId : '1');
     } else if (subpage === 'tableau-blanc') {
       renderBoardDirectory(group, ['1', '2', '3'].includes(boardId) ? boardId : '1');
     } else if (subpage === 'eleves') {

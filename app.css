@@ -91,6 +91,14 @@ p { line-height: 1.5; }
 }
 .home-heading h1, .home-heading p { margin: 0; overflow-wrap: anywhere; }
 .home-heading p { margin-top: 8px; }
+.photo-banner { position: relative; isolation: isolate; overflow: hidden; }
+.banner-photo {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  opacity: .17; z-index: -1; pointer-events: none;
+}
+.home-heading:has(.banner-photo) { min-height: 168px; }
+.choice-line { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.choice-line input { min-height: auto; width: 19px; height: 19px; flex: none; accent-color: var(--accent); }
 .home-settings { background: #fff; border: 1px solid var(--line); }
 .class-tile h2, .personalized-class .carnet-head h1 { color: var(--personal-color); overflow-wrap: anywhere; }
 .personalized-class .carnet-head {

@@ -1,6 +1,17 @@
 'use strict';
 
 const PRONOTE_URL = 'https://gvs.vauban.lu/professeur/services';
+const PRONOTE_DIRECT_URL = 'https://pronote.vauban.lu/pronote/professeur.html';
+const PRONOTE_LINK_KEY = 'mon-carnet-eps-pronote-direct';
+
+function directPronoteLink(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.origin + url.pathname === PRONOTE_DIRECT_URL && !url.username && !url.password) return url.href;
+  } catch {}
+  return null;
+}
 
 function carnetDay() {
   const parts = new Intl.DateTimeFormat('fr-FR', {year: 'numeric', month: '2-digit', day: '2-digit'})
@@ -56,6 +67,7 @@ function renderCarnetAttendance(group, term, students) {
     <div class="carnet-footer">
       <button id="finishAttendance" class="primary" type="button">Enregistrer l’appel</button>
       <a id="openPronote" href="${PRONOTE_URL}" class="action tool-blue" target="_blank" rel="noopener noreferrer" hidden>Ouvrir PRONOTE pour valider</a>
+      <button id="pronoteSettings" type="button">Lien PRONOTE direct</button>
       <p id="attendanceMessage" role="status"></p>
     </div>
   </div>
@@ -72,13 +84,55 @@ function renderCarnetAttendance(group, term, students) {
         <button id="excuseCancel" type="button">Annuler</button><button class="primary">Enregistrer</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="pronoteDialog" aria-labelledby="pronoteTitle">
+    <h2 id="pronoteTitle">Lien PRONOTE direct</h2>
+    <form id="pronoteForm" autocomplete="off">
+      <label for="pronoteAddress">Adresse de l’espace professeur de Vauban</label>
+      <input id="pronoteAddress" type="url" placeholder="${PRONOTE_DIRECT_URL}" aria-describedby="pronoteHint">
+      <p id="pronoteHint" class="muted">Colle l’adresse complète. Laisse le champ vide pour revenir au portail GVS. Le réglage reste dans ce navigateur.</p>
+      <p id="pronoteError" role="status"></p>
+      <div class="actions"><button id="pronoteCancel" type="button">Annuler</button><button class="primary">Enregistrer le lien</button></div>
+    </form>
   </dialog>`;
   const dateField = $('attendanceDate');
   const history = $('attendanceHistory');
   const pronote = $('openPronote');
   const message = $('attendanceMessage');
   dateField.value = carnetDay();
-
+  let directLink = null;
+  try { directLink = directPronoteLink(localStorage.getItem(PRONOTE_LINK_KEY)); } catch {}
+  pronote.href = directLink || PRONOTE_URL;
+  const pronoteDialog = $('pronoteDialog');
+  const pronoteAddress = $('pronoteAddress');
+  const pronoteError = $('pronoteError');
+  $('pronoteSettings').onclick = () => {
+    pronoteAddress.value = directLink || '';
+    pronoteError.textContent = '';
+    pronoteDialog.showModal();
+  };
+  $('pronoteCancel').onclick = () => pronoteDialog.close();
+  pronoteAddress.oninput = () => pronoteAddress.setCustomValidity('');
+  $('pronoteForm').onsubmit = event => {
+    event.preventDefault();
+    const value = pronoteAddress.value.trim();
+    const link = directPronoteLink(value);
+    if (value && !link) {
+      pronoteAddress.setCustomValidity('Utilise l’adresse HTTPS de l’espace professeur PRONOTE de Vauban.');
+      pronoteAddress.reportValidity();
+      return;
+    }
+    try {
+      if (link) localStorage.setItem(PRONOTE_LINK_KEY, link);
+      else localStorage.removeItem(PRONOTE_LINK_KEY);
+    } catch {
+      pronoteError.textContent = 'Le navigateur n’a pas pu enregistrer ce réglage.';
+      return;
+    }
+    directLink = link;
+    pronote.href = directLink || PRONOTE_URL;
+    pronoteDialog.close();
+  };
 
   const termDays = () => group.attendance?.[term] || {};
   const day = () => termDays()[dateField.value];

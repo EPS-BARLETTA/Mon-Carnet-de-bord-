@@ -5,7 +5,7 @@ Application statique, prévue pour les séances d’EPS sur iPad ou ordinateur.
 - Classes et trombinoscope PRONOTE importés depuis une capture JPG ou PNG.
 - Feuille d’appel par date et trimestre, avec accès à l’historique. Présence, oubli d’affaires et dispenses sont suivis séparément.
 - Dispenses de séance avec durée facultative en minutes. Une dispense datée s’affiche pour toutes les séances concernées, y compris sur un autre trimestre.
-- Accès au portail GVS Vauban après l’enregistrement de l’appel. La validation se fait dans PRONOTE.
+- Accès au portail GVS Vauban après l’enregistrement de l’appel. Le réglage « Lien PRONOTE direct » permet d’utiliser une adresse professeur personnalisée, conservée dans le navigateur. La validation se fait dans PRONOTE.
 - Notes par trimestre, barèmes, coefficients et moyenne sur 20.
 - Tableau blanc par trimestre avec séances réouvrables et exportables.
 

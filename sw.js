@@ -1,4 +1,4 @@
-const CACHE = 'mon-carnet-eps-v1';
+const CACHE = 'mon-carnet-eps-v2';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './app.js', './app.css', './board.js', './board.css', './capture.js', './session.js', './carnet.js', './carnet.css',
   './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',

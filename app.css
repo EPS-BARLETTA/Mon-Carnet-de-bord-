@@ -199,3 +199,10 @@ input[type="checkbox"] { min-height: 0; width: 22px; height: 22px; flex: none; a
 .tool-green { background: #dfefe5; color: #244d3a; border-color: #91b7a2; }
 .tool-amber { background: #fff0d4; color: #634616; border-color: #c7a765; }
 #sessionName { width: 100%; margin-top: 6px; }
+.phrase-form label { display: block; margin: 10px 0 6px; }
+.phrase-form input[type="password"], .phrase-form input[type="text"] { width: 100%; }
+.phrase-error { color: #a62020; margin: 8px 0 0; }
+.cloud-setup { margin-top: 12px; }
+.cloud-setup summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.cloud-setup hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
+.cloud-code { display: inline-block; max-width: 100%; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; background: #f1f4f2; padding: 6px 8px; border-radius: 6px; font-size: 13px; }

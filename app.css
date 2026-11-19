@@ -105,6 +105,25 @@ p { line-height: 1.5; }
   border-inline-start: 5px solid var(--personal-color);
   padding-inline: 14px; background: var(--personal-tint); border-radius: 12px;
 }
+.personalized-class .carnet-head:has(.banner-photo) {
+  min-height: clamp(185px, 25vw, 280px);
+  align-items: flex-end;
+  align-content: flex-end;
+  padding: clamp(14px, 2.5vw, 26px);
+  background: var(--personal-color);
+}
+.personalized-class .carnet-head .banner-photo { opacity: 1; z-index: -2; }
+.personalized-class .carnet-head:has(.banner-photo)::before {
+  content: "";
+  position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(to top, rgb(8 19 29 / 90%), rgb(8 19 29 / 48%) 32%, transparent 68%);
+}
+.personalized-class .carnet-head:has(.banner-photo) h1 { margin: 0; color: white; }
+.personalized-class .carnet-head:has(.banner-photo) > a {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding: 7px 12px; border-radius: 9px;
+  background: white; color: var(--ink); font-weight: 650;
+}
 .menu-grid, .class-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(240px,100%),1fr)); gap: 16px; }
 .menu-card {
   display: block;

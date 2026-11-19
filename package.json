@@ -1,0 +1,12 @@
+{
+  "name": "mon-carnet-de-bord-eps",
+  "private": true,
+  "type": "module",
+  "description": "Carnet de bord EPS : application statique et fonction de stockage chiffré sur Vercel Blob.",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.0"
+  }
+}

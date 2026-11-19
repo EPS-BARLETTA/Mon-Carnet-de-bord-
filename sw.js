@@ -1,7 +1,7 @@
-const CACHE = 'mon-carnet-eps-v15';
+const CACHE = 'mon-carnet-eps-v18';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './app.js', './app.css', './board.js', './board.css', './capture.js', './session.js', './carnet.js', './carnet.css',
-  './backup.js', './bulletins.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',
+  './store.js', './crypto.js', './cloud.js', './backup.js', './bulletins.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',
   './ocr/core/tesseract-core-lstm.js', './ocr/client/tesseract-core-lstm.wasm', './ocr/lang/fra.traineddata.gz',
   './fonds/cabines.webp', './fonds/glacier.webp', './fonds/telepherique.webp',
 ];
@@ -15,6 +15,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const {request} = event;
   if (request.method !== 'GET' || !request.url.startsWith(self.registration.scope)) return;
+  if (new URL(request.url).pathname.includes('/api/')) return;
   event.respondWith(fetch(request).catch(async () => {
     const cached = await caches.match(request, {ignoreSearch: true});
     return cached || (request.mode === 'navigate' ? await caches.match('./index.html') : null) || Response.error();

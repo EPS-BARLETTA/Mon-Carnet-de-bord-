@@ -11,4 +11,23 @@ Application statique, prévue pour les séances d’EPS sur iPad ou ordinateur.
 - Notes par trimestre, barèmes, coefficients et moyenne sur 20.
 - Tableau blanc par trimestre avec séances réouvrables et exportables.
 
-Les données sont conservées dans le navigateur sur l’appareil utilisé. Le dépôt contient le code et le moteur de lecture des images. Il peut être servi par GitHub Pages sans compilation.
+## Données et sécurité
+
+- Le carnet est enregistré dans la base IndexedDB du navigateur (beaucoup plus de place que l’ancien stockage, limité à environ 5 Mo sur iPad). Les données de l’ancien stockage sont migrées automatiquement au premier lancement.
+- Les sauvegardes sont chiffrées sur l’appareil (AES-GCM 256 bits, clé dérivée de la phrase secrète par PBKDF2-SHA256, 600 000 itérations). Les anciennes sauvegardes `.json` restent lisibles.
+- La phrase secrète n’est jamais enregistrée ni envoyée. Si elle est perdue, les sauvegardes chiffrées et le carnet en ligne sont illisibles.
+- Le bouton « Effacer le carnet de cet appareil » supprime tout le carnet du navigateur, par exemple sur un ordinateur partagé.
+
+## Carnet en ligne (Vercel)
+
+Le carnet peut être envoyé vers un store Vercel Blob **privé** pour être récupéré sur un autre appareil. Il est chiffré avant l’envoi : le serveur ne reçoit que des données illisibles.
+
+Mise en place :
+
+1. Dans le projet Vercel, onglet **Storage** : créer un store **Blob** en accès **Private** et le relier au projet.
+2. Dans le carnet, page **Sauvegarde → Configuration et options → Afficher mon code d’accès** : choisir la phrase secrète, puis copier le code.
+3. Dans Vercel, **Settings → Environment Variables** : ajouter `CARNET_CLE_ACCES` avec ce code, puis redéployer.
+
+Le code d’accès est une empreinte dérivée de la phrase. Il permet au serveur de vérifier les demandes, mais pas de lire le carnet. Après un changement de phrase, mettre à jour `CARNET_CLE_ACCES`.
+
+`vercel.json` ajoute les en-têtes de sécurité (politique de sécurité du contenu, interdiction d’intégration dans une autre page, pas d’indexation). Sur GitHub Pages, l’application reste utilisable sans le carnet en ligne.

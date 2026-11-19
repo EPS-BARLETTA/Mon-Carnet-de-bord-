@@ -37,18 +37,27 @@ const content = $('content');
 const cover = content.innerHTML;
 let classes = [];
 let canReadStorage = true;
-try {
-  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  if (!Array.isArray(saved)) throw Error('Format incorrect');
-  classes = saved.map(group => {
-    if (Array.isArray(group.boards)) return group;
-    const {board, boardArchives, ...rest} = group;
-    return {...rest, boards: [{id: 'principal', name: 'Tableau principal', board, boardArchives}]};
-  });
-} catch {
-  canReadStorage = false;
+let homeSettings = {};
+let carnetReady = false;
+
+function loadCarnet(stored) {
+  canReadStorage = true;
+  try {
+    const saved = JSON.parse(stored.classes || '[]');
+    if (!Array.isArray(saved)) throw Error('Format incorrect');
+    classes = saved.map(group => {
+      if (Array.isArray(group.boards)) return group;
+      const {board, boardArchives, ...rest} = group;
+      return {...rest, boards: [{id: 'principal', name: 'Tableau principal', board, boardArchives}]};
+    });
+  } catch {
+    classes = [];
+    canReadStorage = false;
+  }
+  try { homeSettings = JSON.parse(stored.home || '{}') || {}; }
+  catch { homeSettings = {}; }
+  assignClassColors();
 }
-assignClassColors();
 try { localStorage.removeItem('mon-carnet-eps-pronote-direct'); } catch {}
 
 let noticeTimer;
@@ -60,17 +69,30 @@ function notify(message) {
   noticeTimer = setTimeout(() => { notice.hidden = true; }, 3800);
 }
 
+function storageErrorMessage(error) {
+  return error?.name === 'QuotaExceededError'
+    ? 'Le stockage de ce navigateur est plein. Les modifications n’ont pas été enregistrées.'
+    : 'Enregistrement impossible dans ce navigateur.';
+}
+
+CarnetStore.onError = error => notify(storageErrorMessage(error));
+
 function save(reportError = notify) {
   try {
-    if (!canReadStorage) throw Error('Lecture du stockage impossible');
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(classes));
+    if (!canReadStorage || !carnetReady) throw Error('Lecture du stockage impossible');
+    CarnetStore.set('classes', JSON.stringify(classes));
+    if (typeof markCarnetChanged === 'function') markCarnetChanged();
     return true;
   } catch (error) {
-    reportError(error.name === 'QuotaExceededError'
-      ? 'Le stockage de ce navigateur est plein. Les modifications n’ont pas été enregistrées.'
-      : 'Enregistrement impossible dans ce navigateur.');
+    reportError(storageErrorMessage(error));
     return false;
   }
+}
+
+function saveHome(settings) {
+  homeSettings = settings;
+  CarnetStore.set('home', JSON.stringify(settings));
+  if (typeof markCarnetChanged === 'function') markCarnetChanged();
 }
 
 function download(name, data, type) {
@@ -131,7 +153,7 @@ function appearanceStyle(color) {
 
 function homeAppearance() {
   try {
-    const settings = JSON.parse(localStorage.getItem(HOME_KEY) || '{}') || {};
+    const settings = homeSettings || {};
     return {
       title: typeof settings.title === 'string' && settings.title.trim() ? settings.title.trim().slice(0, 70) : DEFAULT_HOME.title,
       intro: typeof settings.intro === 'string' ? settings.intro.slice(0, 160) : DEFAULT_HOME.intro,
@@ -272,13 +294,13 @@ function renderHomeSettings() {
     event.preventDefault();
     if (coverPhoto.busy() || menuPhoto.busy()) { notify('La photo est en cours de préparation.'); return; }
     try {
-      localStorage.setItem(HOME_KEY, JSON.stringify({
+      saveHome({
         title: $('homeTitle').value.trim() || DEFAULT_HOME.title,
         intro: $('homeIntro').value.trim(),
         color: appearanceColor($('homeColor').value),
         photo: coverPhoto.value(),
         menuPhoto: menuPhoto.value(),
-      }));
+      });
     } catch {
       notify('Enregistrement impossible dans ce navigateur.');
       return;
@@ -661,6 +683,7 @@ function renderClassForm(group) {
 }
 
 function render() {
+  if (!carnetReady) return;
   const [page, id, subpage, boardId, hiddenIds] = location.hash.slice(1).split('/');
   updateBackupReminder();
   $('navHome').hidden = !page || page === 'accueil';
@@ -724,7 +747,11 @@ window.addEventListener('hashchange', () => {
   render();
   window.scrollTo(0, 0);
 });
-render();
+CarnetStore.load().then(stored => {
+  loadCarnet(stored);
+  carnetReady = true;
+  render();
+});
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
   navigator.serviceWorker.register('./sw.js').catch(() => {});

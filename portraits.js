@@ -109,8 +109,11 @@ function rosterTiles(image, {x, y, width: cropWidth, height: cropHeight}) {
     throw new Error('La grille n’a pas été reconnue. Utilise une capture complète avec les photos et les noms en dessous.');
   }
   const columnFor = ([left, right]) => layout.findIndex(([start, end]) => {
-    const tolerance = Math.max(8, (end - start) * 0.12);
-    return Math.abs(start - left) <= tolerance && Math.abs(end - right) <= tolerance;
+    // Une photo claire peut perdre quelques pixels sur un côté à la détection.
+    const columnWidth = end - start;
+    const overlap = Math.min(end, right) - Math.max(start, left);
+    const centerOffset = Math.abs((start + end - left - right) / 2);
+    return overlap >= columnWidth * 0.55 && centerOffset <= Math.max(8, columnWidth * 0.28);
   });
   if (grid.some(row => {
     const columns = row.portraits.map(columnFor);
@@ -123,7 +126,7 @@ function rosterTiles(image, {x, y, width: cropWidth, height: cropHeight}) {
     const portraitHeight = row.bottom - row.top;
     for (const [left, right] of row.portraits) {
       const col = columnFor([left, right]);
-      const textLeft = Math.max(0, left - 3);
+      const textLeft = Math.max(0, Math.min(left, layout[col][0]) - 3);
       const textRight = Math.min(width, (layout[col + 1]?.[0] ?? width) - 4);
       const textBottom = Math.min(height, grid[i + 1]?.top ?? height, row.bottom + Math.round(portraitHeight * 0.275));
       if (textBottom - row.bottom < 10) continue;

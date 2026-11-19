@@ -54,6 +54,7 @@ function frenchDate(iso) {
 }
 
 function megabytes(bytes) {
+  if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)).toLocaleString('fr-FR') + ' Ko';
   return (bytes / 1024 / 1024).toLocaleString('fr-FR', {maximumFractionDigits: 1}) + ' Mo';
 }
 
@@ -498,7 +499,8 @@ function renderBackup() {
       } catch (error) {
         if (error.code !== 'conflit') throw error;
         const other = error.details;
-        if (!confirm(`Le carnet en ligne a été envoyé ${frenchDate(other?.created)} depuis ${other?.appareil || 'un autre appareil'}, après la dernière synchronisation de cet appareil.\n\nLe remplacer par le carnet de cet appareil ?`)) {
+        const here = `${classes.length} classe${classes.length === 1 ? '' : 's'}`;
+        if (!confirm(`⚠️ ATTENTION : une version plus récente est en ligne (envoyée ${frenchDate(other?.created)} depuis ${other?.appareil || 'un autre appareil'}).\n\nTouche OK seulement si tu veux l’EFFACER et la remplacer par le carnet de cet appareil (${here}).\n\nPour récupérer la version en ligne, touche Annuler puis « Récupérer depuis le cloud ».`)) {
           cloudReport('Envoi annulé. Tu peux d’abord récupérer la version en ligne.');
           return;
         }
@@ -528,7 +530,8 @@ function renderBackup() {
       catch { throw Error('Le carnet en ligne a été chiffré avec une autre phrase secrète.'); }
       const data = parseBackup(text);
       const warning = cloudState.dirty ? '\n\nAttention : les modifications faites sur cet appareil depuis le dernier envoi seront perdues.' : '';
-      if (!confirm(`Remplacer le carnet de cet appareil par la version en ligne envoyée ${frenchDate(manifest.created)} (${data.classes.length} classe(s)) ?${warning}`)) {
+      const fewer = data.classes.length < classes.length ? `\n\nAttention : la version en ligne a moins de classes (${data.classes.length}) que cet appareil (${classes.length}).` : '';
+      if (!confirm(`Remplacer le carnet de cet appareil par la version en ligne envoyée ${frenchDate(manifest.created)} (${data.classes.length} classe(s)) ?${warning}${fewer}`)) {
         cloudReport('Récupération annulée.');
         return;
       }

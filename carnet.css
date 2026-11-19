@@ -61,3 +61,5 @@
 }
 .bulletin-mentions legend { font-weight: 700; }
 .bulletin #bulletinReading p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 18px; font-size: 1.1rem; }
+.evaluation-head { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; cursor: pointer; transition: background-color .5s ease; }
+.evaluation-head.pressing { background-color: #f7dede; }

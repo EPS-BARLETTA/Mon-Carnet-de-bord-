@@ -29,12 +29,13 @@ function renderCarnet(group, tab, term) {
       <h1>${esc(group.name)}</h1>
       <a href="${root}/eleves">Modifier la classe et le trombinoscope</a>
     </header>
-    <nav class="carnet-tabs" aria-label="Trimestre">${['1', '2', '3'].map(number =>
+    <nav class="carnet-tabs" aria-label="Trimestre" ${tab === 'trombinoscope' ? 'hidden' : ''}>${['1', '2', '3'].map(number =>
       `<a href="${root}/${tab}/${number}" ${term === number ? 'aria-current="page"' : ''}>Trimestre ${number}</a>`).join('')}</nav>
     <nav class="carnet-tabs carnet-sections" aria-label="Carnet">
       <a href="${root}/appel/${term}" ${tab === 'appel' ? 'aria-current="page"' : ''}>Appel</a>
       <a href="${root}/notes/${term}" ${tab === 'notes' ? 'aria-current="page"' : ''}>Notes</a>
       <a href="${root}/bulletins/${term}" ${tab === 'bulletins' ? 'aria-current="page"' : ''}>Bulletins</a>
+      <a href="${root}/trombinoscope/${term}" ${tab === 'trombinoscope' ? 'aria-current="page"' : ''}>Trombinoscope</a>
       ${group.principal === true ? `<a href="${root}/conseil/${term}" ${tab === 'conseil' ? 'aria-current="page"' : ''}>Prof principal</a>` : ''}
       <a href="${root}/tableau-blanc/${term}">Tableau blanc</a>
     </nav>
@@ -42,7 +43,27 @@ function renderCarnet(group, tab, term) {
   </section>`;
   if (tab === 'notes') renderCarnetGrades(group, term, students);
   else if (tab === 'bulletins' || tab === 'conseil') renderBulletins(group, term, students, tab === 'conseil');
+  else if (tab === 'trombinoscope') renderClassTrombinoscope(students);
   else renderCarnetAttendance(group, term, students);
+}
+
+function renderClassTrombinoscope(students) {
+  const panel = $('carnetContent');
+  panel.innerHTML = `<section class="carnet-panel">
+    <h2>Trombinoscope</h2>
+    ${students.length ? '<ul id="classPortraits" class="class-portraits"></ul>' : '<p>Aucun élève dans cette classe.</p>'}
+  </section>`;
+  if (!students.length) return;
+  $('classPortraits').append(...students.map(student => {
+    const item = document.createElement('li');
+    const portrait = RosterPortraits.photo(student.portrait);
+    if (portrait.tagName === 'IMG') portrait.loading = 'lazy';
+    else portrait.textContent = student.name.trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toLocaleUpperCase('fr');
+    const name = document.createElement('strong');
+    name.textContent = student.name;
+    item.append(portrait, name);
+    return item;
+  }));
 }
 
 function renderCarnetAttendance(group, term, students) {

@@ -694,7 +694,7 @@ function render() {
     const group = classes.find(c => c.id === id);
     if (!group) {
       renderDirectory();
-    } else if (!subpage || ['appel', 'notes', 'bulletins', 'conseil'].includes(subpage)) {
+    } else if (!subpage || ['appel', 'notes', 'bulletins', 'conseil', 'trombinoscope'].includes(subpage)) {
       const tab = subpage === 'conseil' && group.principal !== true ? 'bulletins' : subpage || 'appel';
       renderCarnet(group, tab, ['1', '2', '3'].includes(boardId) ? boardId : '1');
     } else if (subpage === 'tableau-blanc') {

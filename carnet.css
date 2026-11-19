@@ -15,6 +15,16 @@
 .carnet-tabs a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: white; }
 .carnet-sections a[aria-current="page"] { background: #e2edf9; border-color: #99b3d3; color: #203f65; }
 .carnet-panel { border: 1px solid var(--line); border-radius: 16px; padding: clamp(12px, 2vw, 22px); background: white; }
+.class-portraits {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(125px, 100%), 1fr)); gap: 10px;
+  list-style: none; margin: 14px 0 0; padding: 0;
+}
+.class-portraits li {
+  display: grid; justify-items: center; align-content: start; gap: 8px; padding: 10px 6px;
+  border: 1px solid var(--line); border-radius: 10px; background: #f5f8f7; text-align: center;
+  overflow-wrap: anywhere;
+}
+.class-portraits .pf-roster-photo { width: min(84px, 100%); height: auto; aspect-ratio: 3 / 4; font-size: 1.2rem; }
 .carnet-controls, .carnet-footer { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
 .carnet-controls label { min-width: min(190px, 100%); }
 .carnet-controls input, .carnet-controls select { display: block; width: 100%; margin-top: 4px; }

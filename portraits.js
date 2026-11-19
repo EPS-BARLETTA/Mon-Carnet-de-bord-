@@ -98,14 +98,15 @@ function rosterTiles(image, {x, y, width: cropWidth, height: cropHeight}) {
     for (let y = top; y < bottom; y++) {
       for (let x = 0; x < width; x++) cols[x] += dark[y * width + x];
     }
-    const portraits = denseBands(cols, rowHeight * 0.32, Math.max(22, width * 0.033));
+    const portraits = denseBands(cols, rowHeight * 0.32, Math.max(12, rowHeight * 0.34))
+      .filter(([left, right]) => {
+        const ratio = (right - left) / rowHeight;
+        return ratio >= 0.34 && ratio <= 1.37;
+      });
     return {top, bottom, portraits};
-  }).filter(row => row.portraits.length && row.portraits.every(([left, right]) => {
-    const ratio = (right - left) / (row.bottom - row.top);
-    return ratio >= 0.47 && ratio <= 1.37;
-  }));
+  }).filter(row => row.portraits.length);
   const layout = grid.reduce((best, row) => row.portraits.length > best.length ? row.portraits : best, []);
-  if (layout.length < 2 || grid.reduce((n, row) => n + row.portraits.length, 0) > 80) {
+  if (!layout.length || grid.reduce((n, row) => n + row.portraits.length, 0) > 80) {
     throw new Error('La grille n’a pas été reconnue. Utilise une capture complète avec les photos et les noms en dessous.');
   }
   const columnFor = ([left, right]) => layout.findIndex(([start, end]) => {
@@ -115,31 +116,33 @@ function rosterTiles(image, {x, y, width: cropWidth, height: cropHeight}) {
     const centerOffset = Math.abs((start + end - left - right) / 2);
     return overlap >= columnWidth * 0.55 && centerOffset <= Math.max(8, columnWidth * 0.28);
   });
-  if (grid.some(row => {
-    const columns = row.portraits.map(columnFor);
-    return columns.includes(-1) || new Set(columns).size !== columns.length;
-  })) {
-    throw new Error('Les portraits ne sont pas alignés. Recadre la capture sur la grille et réessaie.');
-  }
+  const gaps = layout.slice(1).map(([left], index) => left - layout[index][0]).sort((a, b) => a - b);
+  const typicalGap = gaps[Math.floor(gaps.length / 2)];
   const tiles = [];
   for (const [i, row] of grid.entries()) {
     const portraitHeight = row.bottom - row.top;
-    for (const [left, right] of row.portraits) {
-      const col = columnFor([left, right]);
-      const textLeft = Math.max(0, Math.min(left, layout[col][0]) - 3);
-      const textRight = Math.min(width, (layout[col + 1]?.[0] ?? width) - 4);
-      const textBottom = Math.min(height, grid[i + 1]?.top ?? height, row.bottom + Math.round(portraitHeight * 0.275));
-      if (textBottom - row.bottom < 10) continue;
+    const columns = row.portraits.map(columnFor);
+    for (const [index, [left, right]] of row.portraits.entries()) {
+      const col = columns[index];
+      const aligned = col >= 0 && columns.indexOf(col) === columns.lastIndexOf(col);
       const portraitWidth = right - left;
+      const textLeft = Math.max(0, (aligned ? Math.min(left, layout[col][0]) : left) - 3);
+      const nextInRow = row.portraits[index + 1]?.[0] ?? width;
+      const nextInGrid = aligned ? layout[col + 1]?.[0] ?? width : left + (typicalGap || portraitWidth * 1.5);
+      const textRight = Math.max(right, Math.min(width, nextInRow, nextInGrid) - 4);
+      const textBottom = Math.min(height, grid[i + 1]?.top ?? height, row.bottom + Math.round(portraitHeight * 0.275));
       const photo = rosterCanvas(84, Math.round(84 * portraitHeight / portraitWidth));
       photo.getContext('2d').drawImage(source, left, row.top, portraitWidth, portraitHeight, 0, 0, photo.width, photo.height);
+      const tile = {photo: photo.toDataURL('image/jpeg', 0.72), label: null, manual: !aligned};
+      tiles.push(tile);
+      if (textBottom - row.bottom < 10) continue;
       const label = rosterCanvas((textRight - textLeft) * 2 + 20, (textBottom - row.bottom) * 2 + 16);
       const labelCtx = label.getContext('2d');
       labelCtx.fillStyle = '#fff';
       labelCtx.fillRect(0, 0, label.width, label.height);
       labelCtx.drawImage(source, textLeft, row.bottom, textRight - textLeft, textBottom - row.bottom, 10, 8,
         label.width - 20, label.height - 16);
-      tiles.push({photo: photo.toDataURL('image/jpeg', 0.72), label});
+      tile.label = label;
     }
   }
   return tiles;
@@ -172,6 +175,7 @@ async function readRosterTiles(tiles, onProgress) {
     await worker.setParameters({tessedit_pageseg_mode: '6'});
     for (const [i, tile] of tiles.entries()) {
       onProgress(i + 1);
+      if (!tile.label) continue;
       const {data} = await worker.recognize(tile.label);
       const lines = data.text.trim().split(/\n/).map(line => line.trim()).filter(Boolean);
       if (lines.length === 2 && /\s/.test(lines[0]) && /^\p{L}$/u.test(lines[1])) lines.pop();
@@ -346,7 +350,7 @@ function validRosterPortrait(value) {
         const field = document.createElement(existing ? 'select' : 'input');
         let newName;
         if (existing) {
-          const match = suggestPortraitStudent(candidates, tile.name);
+          const match = tile.manual ? '' : suggestPortraitStudent(candidates, tile.name);
           field.append(new Option('À associer', ''), new Option('Ignorer ce portrait', '-'),
             new Option('Ajouter comme nouvel élève', 'new'));
           candidates.forEach(p => field.append(new Option(p.name + (p.bib ? ' · n° ' + p.bib : ''), p.id)));
@@ -410,6 +414,7 @@ function validRosterPortrait(value) {
           if (check) pending++;
         }
         const parts = [];
+        if (!savedCount) parts.push(`${tiles.length} portrait(s) détecté(s)`);
         if (readIssue) parts.push('Lecture automatique incomplète');
         if (savedCount) parts.push(`${savedCount} enregistré(s)`);
         if (ready.length) parts.push(`${ready.length} prêt(s) à enregistrer`);

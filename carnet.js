@@ -1,6 +1,6 @@
 'use strict';
 
-const PRONOTE_URL = 'https://gvs.vauban.lu/professeur/services';
+const PRONOTE_URL = 'https://gvs.vauban.lu/professeur/home';
 const PRONOTE_DIRECT_URL = 'https://pronote.vauban.lu/pronote/professeur.html';
 const PRONOTE_LINK_KEY = 'mon-carnet-eps-pronote-direct';
 

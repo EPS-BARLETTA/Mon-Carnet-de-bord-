@@ -1,9 +1,10 @@
-const CACHE = 'mon-carnet-eps-v19';
+const CACHE = 'mon-carnet-eps-v20';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './app.js', './app.css', './board.js', './board.css', './capture.js', './session.js', './carnet.js', './carnet.css',
   './store.js', './crypto.js', './cloud.js', './backup.js', './bulletins.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',
   './ocr/core/tesseract-core-lstm.js', './ocr/client/tesseract-core-lstm.wasm', './ocr/lang/fra.traineddata.gz',
   './fonds/cabines.webp', './fonds/glacier.webp', './fonds/telepherique.webp',
+  './fonds/el-capitan.webp', './fonds/verdon.webp', './fonds/fontainebleau.webp', './fonds/credits.html',
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

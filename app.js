@@ -12,6 +12,9 @@ const BUILTIN_PHOTOS = {
   'fond:cabines': ['Cabines jaunes et orange', './fonds/cabines.webp'],
   'fond:glacier': ['Glacier sous le ciel bleu', './fonds/glacier.webp'],
   'fond:telepherique': ['Téléphérique dans les Alpes', './fonds/telepherique.webp'],
+  'fond:el-capitan': ['Escalade · El Capitan — Yosemite', './fonds/el-capitan.webp'],
+  'fond:verdon': ['Escalade · Gorges du Verdon', './fonds/verdon.webp'],
+  'fond:fontainebleau': ['Escalade · Blocs de Fontainebleau', './fonds/fontainebleau.webp'],
 };
 const APPEARANCE_COLORS = {
   vert: ['Vert', '#226047', '#e8f3eb'],
@@ -188,6 +191,7 @@ function photoFields(prefix, label) {
       ${Object.entries(BUILTIN_PHOTOS).map(([id, [name]]) => `<option value="${id}">${name}</option>`).join('')}
       <option value="custom" hidden>Photo personnelle</option>
     </select>
+    <small><a href="./fonds/credits.html" target="_blank" rel="noopener">Crédits des photos d’escalade</a></small>
     <label for="${prefix}Photo">Importer une photo personnelle</label>
     <input id="${prefix}Photo" type="file" accept="image/*">
     <img id="${prefix}PhotoPreview" class="home-photo-preview" alt="Aperçu" hidden>

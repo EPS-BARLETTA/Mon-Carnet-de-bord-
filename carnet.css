@@ -36,6 +36,8 @@
 .carnet-table { width: 100%; border-collapse: collapse; }
 .carnet-table th, .carnet-table td { padding: 8px; text-align: left; border-bottom: 1px solid var(--line); }
 .carnet-table thead { background: #eef2f5; }
+#attendanceRows > tr:nth-child(odd) { background: #fff; }
+#attendanceRows > tr:nth-child(even) { background: #f1f3f4; }
 .carnet-table small { display: block; margin-top: 5px; color: var(--quiet); }
 .carnet-absent { background: #fff5f5; }
 .carnet-student { display: flex; align-items: center; gap: 8px; min-width: 135px; }

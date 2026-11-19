@@ -22,6 +22,7 @@ function bulletinEntry(group, term, studentId) {
 
 function renderBulletins(group, term, students, principal) {
   const panel = $('carnetContent');
+  const locked = carnetTermLocked(group, term);
   if (!students.length) {
     panel.innerHTML = '<p class="card">Ajoute des élèves à la classe pour préparer les bulletins.</p>';
     return;
@@ -39,24 +40,24 @@ function renderBulletins(group, term, students, principal) {
     <div id="bulletinIdentity" class="carnet-student bulletin-identity" aria-live="polite"></div>
     <form id="bulletinForm">
       <label for="bulletinRemark">${principal ? 'Appréciation générale' : 'Appréciation EPS'}</label>
-      <textarea id="bulletinRemark" rows="5" maxlength="6000"></textarea>
-      ${principal ? `<fieldset class="bulletin-mentions"><legend>Mentions</legend>
+      <textarea id="bulletinRemark" rows="5" maxlength="6000" ${locked ? 'readonly' : ''}></textarea>
+      ${principal ? `<fieldset class="bulletin-mentions" ${locked ? 'disabled' : ''}><legend>Mentions</legend>
         ${BULLETIN_MENTIONS.map(([key, label]) =>
           `<label class="choice-line"><input type="checkbox" name="mention" value="${key}"> ${label}</label>`).join('')}
       </fieldset>
       <label for="bulletinMemo">Mémo pour le conseil</label>
-      <textarea id="bulletinMemo" rows="4" maxlength="6000"></textarea>` : ''}
+      <textarea id="bulletinMemo" rows="4" maxlength="6000" ${locked ? 'readonly' : ''}></textarea>` : ''}
       <div class="actions">
         <button type="button" id="copyBulletin">Copier l’appréciation</button>
         ${principal ? '<button type="button" id="bulletinRead">Lire la fiche</button>' : ''}
-        <button class="primary">Enregistrer</button>
+        ${locked ? '' : '<button class="primary">Enregistrer</button>'}
       </div>
     </form>
     ${principal ? `<section id="bulletinReading" hidden>
       <h3>Appréciation générale</h3><p id="bulletinReadRemark"></p>
       <h3>Mentions</h3><p id="bulletinReadMentions"></p>
       <h3>Mémo pour le conseil</h3><p id="bulletinReadMemo"></p>
-      <button id="bulletinEdit" type="button">Modifier la fiche</button>
+      <button id="bulletinEdit" type="button">${locked ? 'Retour à la fiche' : 'Modifier la fiche'}</button>
     </section>` : ''}
     <p id="bulletinStatus" class="muted" role="status"></p>
   </section>`;
@@ -100,6 +101,7 @@ function renderBulletins(group, term, students, principal) {
   }
 
   function commit() {
+    if (carnetTermLocked(group, term)) return true;
     const entry = principal
       ? {...current, conseil: remark.value, memo: memo.value, mentions: checks.filter(check => check.checked).map(check => check.value)}
       : {...current, eps: remark.value};
@@ -108,7 +110,7 @@ function renderBulletins(group, term, students, principal) {
     const termEntries = {...group.bulletins?.[term]};
     if (entry.eps || entry.conseil || entry.memo || entry.mentions.length) termEntries[studentId] = entry;
     else delete termEntries[studentId];
-    if (!carnetCommit(group, 'bulletins', {...group.bulletins, [term]: termEntries})) {
+    if (!carnetCommit(group, 'bulletins', {...group.bulletins, [term]: termEntries}, term)) {
       status.textContent = 'La fiche n’a pas été enregistrée. Tu peux encore copier le texte.';
       return false;
     }
@@ -132,7 +134,7 @@ function renderBulletins(group, term, students, principal) {
   form.onchange = commit;
   form.onsubmit = event => {
     event.preventDefault();
-    if (commit()) status.textContent = 'Fiche enregistrée sur cet appareil.';
+    if (!locked && commit()) status.textContent = 'Fiche enregistrée sur cet appareil.';
   };
   remark.oninput = () => { copy.disabled = !remark.value.trim(); };
   copy.onclick = async () => {

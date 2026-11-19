@@ -531,10 +531,25 @@ function renderClassForm(group) {
       <textarea id="manualNames" rows="4" placeholder="Un nom et un prénom par ligne"></textarea>
       <button class="${group ? 'primary' : ''}" type="submit">${group ? 'Enregistrer' : 'Créer la classe'}</button>
     </form>
+    ${group ? `<div class="actions"><button id="deleteClass" class="danger" type="button">Supprimer cette classe</button></div>` : ''}
   </section>`;
   const name = $('className');
   const file = $('pictureInput');
   const photo = photoPicker('classBanner', group?.banner, 800);
+
+  if (group) {
+    $('deleteClass').onclick = () => {
+      if (!confirm(`Supprimer « ${group.name} » de cet appareil ? Ses élèves, photos, appels, notes, bulletins et tableaux seront retirés. Une sauvegarde existante pourra être restaurée.`)) return;
+      const previous = classes;
+      classes = classes.filter(item => item.id !== group.id);
+      if (!save()) {
+        classes = previous;
+        return;
+      }
+      location.hash = '#classes';
+      notify(`Classe « ${group.name} » supprimée.`);
+    };
+  }
 
   function validName() {
     if (photo.busy()) { notify('La photo est en cours de préparation.'); return false; }

@@ -233,11 +233,11 @@ function renderCarnetGrades(group, term, students) {
   panel.innerHTML = `<section class="carnet-panel">
     <div class="carnet-controls">
       <button id="newEvaluation" class="primary">Ajouter une évaluation</button>
-      <p class="muted">Les moyennes sont ramenées sur 20 et pondérées par les coefficients.</p>
+      <p class="muted">Les moyennes sont ramenées sur 20 et pondérées par les coefficients.${evaluations.length ? ' Appui long sur le titre d’une évaluation pour la supprimer.' : ''}</p>
     </div>
     <div class="carnet-table-wrap"><table class="carnet-table grade-table">
       <thead><tr><th scope="col">Élève</th>${evaluations.map(item =>
-        `<th scope="col">${esc(item.name)}<small>/${item.maximum} · coef. ${item.weight}</small></th>`).join('')}<th scope="col">Moyenne /20</th></tr></thead>
+        `<th scope="col" class="evaluation-head" data-evaluation="${esc(item.id)}" title="Appui long pour supprimer">${esc(item.name)}<small>/${item.maximum} · coef. ${item.weight}</small></th>`).join('')}<th scope="col">Moyenne /20</th></tr></thead>
       <tbody></tbody>
     </table></div>
   </section>
@@ -296,6 +296,38 @@ function renderCarnetGrades(group, term, students) {
     }
     row.append(result);
     table.append(row);
+  }
+  function removeEvaluation(id) {
+    const current = group.evaluations?.[term] || [];
+    const evaluation = current.find(item => item.id === id);
+    if (!evaluation) return;
+    const count = Object.values(evaluation.scores).filter(Number.isFinite).length;
+    const notes = count ? ` et ses ${count} note${count === 1 ? '' : 's'}` : '';
+    if (!confirm(`Supprimer l’évaluation « ${evaluation.name} »${notes} ?\n\nLes moyennes seront recalculées. Cette action est définitive.`)) return;
+    if (carnetCommit(group, 'evaluations', {...group.evaluations, [term]: current.filter(item => item.id !== id)})) {
+      renderCarnetGrades(group, term, students);
+      notify(`Évaluation « ${evaluation.name} » supprimée.`);
+    }
+  }
+  for (const head of panel.querySelectorAll('[data-evaluation]')) {
+    let timer = null;
+    let start = null;
+    const cancel = () => { clearTimeout(timer); timer = null; head.classList.remove('pressing'); };
+    head.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      start = [event.clientX, event.clientY];
+      head.classList.add('pressing');
+      timer = setTimeout(() => { cancel(); removeEvaluation(head.dataset.evaluation); }, 650);
+    });
+    head.addEventListener('pointermove', event => {
+      if (timer && Math.hypot(event.clientX - start[0], event.clientY - start[1]) > 10) cancel();
+    });
+    for (const type of ['pointerup', 'pointercancel', 'pointerleave']) head.addEventListener(type, cancel);
+    head.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      cancel();
+      removeEvaluation(head.dataset.evaluation);
+    });
   }
   $('newEvaluation').onclick = () => $('evaluationDialog').showModal();
   $('evaluationCancel').onclick = () => $('evaluationDialog').close();

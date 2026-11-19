@@ -1,85 +1,5 @@
 'use strict';
 
-const GVS_LOGIN = 'https://gvs.vauban.lu/login';
-const GVS_SERVICES = 'https://gvs.vauban.lu/professeur/services';
-const PRONOTE_DIRECT_URL = 'https://pronote.vauban.lu/pronote/professeur.html';
-const PRONOTE_LINK_KEY = 'mon-carnet-eps-pronote-direct';
-
-function directPronoteLink(value) {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (url.origin + url.pathname === PRONOTE_DIRECT_URL && !url.username && !url.password) return url.href;
-  } catch {}
-  return null;
-}
-
-function savedPronoteLink() {
-  try { return directPronoteLink(localStorage.getItem(PRONOTE_LINK_KEY)); }
-  catch { return null; }
-}
-
-function renderPronoteAccess() {
-  const savedLink = savedPronoteLink();
-  content.innerHTML = `<section class="route class-form">
-    <a class="back-link" href="#accueil">← Accueil</a>
-    <h1>Accès à PRONOTE</h1>
-    <div class="card pronote-card">
-      <p>Ouvre GVS dans un onglet de Safari et connecte-toi avec ton compte Vauban. Une fois connecté, ouvre la rubrique Services et choisis PRONOTE si le raccourci apparaît.</p>
-      <div class="pronote-actions">
-        <a class="action primary" href="${GVS_LOGIN}" target="_blank" rel="noopener noreferrer">Se connecter à Vauban</a>
-        <a class="action" href="${GVS_SERVICES}" target="_blank" rel="noopener noreferrer">Ouvrir les services GVS</a>
-      </div>
-      <p class="muted">Si tu as installé le carnet sur l’écran d’accueil de l’iPad, essaie d’abord ces liens directement dans Safari.</p>
-    </div>
-    <form class="card pronote-card" id="pronoteForm" autocomplete="off">
-      <h2>Lien PRONOTE direct</h2>
-      <label for="pronoteAddress">Adresse de l’espace professeur de Vauban</label>
-      <input id="pronoteAddress" type="url" placeholder="${PRONOTE_DIRECT_URL}" aria-describedby="pronoteHint">
-      <p id="pronoteHint" class="muted">Le lien est facultatif. Laisse le champ vide pour utiliser GVS en fin d’appel. Le réglage reste dans ce navigateur.</p>
-      <p id="pronoteStatus" role="status" hidden></p>
-      <div class="pronote-actions">
-        <button type="submit">Enregistrer le lien</button>
-        <a id="testPronoteLink" class="action" target="_blank" rel="noopener noreferrer" hidden>Tester le lien direct</a>
-      </div>
-    </form>
-  </section>`;
-  const address = $('pronoteAddress');
-  const status = $('pronoteStatus');
-  const test = $('testPronoteLink');
-  function showTest(link) {
-    test.hidden = !link;
-    if (link) test.href = link;
-    else test.removeAttribute('href');
-  }
-  address.value = savedLink || '';
-  showTest(savedLink);
-  address.oninput = () => {
-    address.setCustomValidity('');
-    status.hidden = true;
-  };
-  $('pronoteForm').onsubmit = event => {
-    event.preventDefault();
-    const value = address.value.trim();
-    const link = directPronoteLink(value);
-    if (value && !link) {
-      address.setCustomValidity('Utilise l’adresse HTTPS de l’espace professeur PRONOTE de Vauban.');
-      address.reportValidity();
-      return;
-    }
-    status.hidden = false;
-    try {
-      if (link) localStorage.setItem(PRONOTE_LINK_KEY, link);
-      else localStorage.removeItem(PRONOTE_LINK_KEY);
-    } catch {
-      status.textContent = 'Le navigateur n’a pas pu enregistrer ce réglage.';
-      return;
-    }
-    showTest(link);
-    status.textContent = link ? 'Lien direct enregistré.' : 'La connexion Vauban est rétablie pour la fin d’appel.';
-  };
-}
-
 function carnetDay() {
   const parts = new Intl.DateTimeFormat('fr-FR', {year: 'numeric', month: '2-digit', day: '2-digit'})
     .formatToParts(new Date());
@@ -122,7 +42,6 @@ function renderCarnet(group, tab, term) {
 }
 
 function renderCarnetAttendance(group, term, students) {
-  const directLink = savedPronoteLink();
   $('carnetContent').innerHTML = `<div class="carnet-panel">
     <div class="carnet-controls">
       <label for="attendanceDate">Date de la séance <input id="attendanceDate" type="date" required></label>
@@ -134,8 +53,6 @@ function renderCarnetAttendance(group, term, students) {
     </tr></thead><tbody id="attendanceRows"></tbody></table></div>
     <div class="carnet-footer">
       <button id="finishAttendance" class="primary" type="button">Enregistrer l’appel</button>
-      <a id="openPronote" href="${esc(directLink || GVS_LOGIN)}" class="action tool-blue" target="_blank" rel="noopener noreferrer" hidden>${directLink ? 'Ouvrir PRONOTE pour valider' : 'Se connecter à Vauban pour valider'}</a>
-      <a class="action" href="#pronote">Accès et aide PRONOTE</a>
       <p id="attendanceMessage" role="status"></p>
     </div>
   </div>
@@ -155,7 +72,6 @@ function renderCarnetAttendance(group, term, students) {
   </dialog>`;
   const dateField = $('attendanceDate');
   const history = $('attendanceHistory');
-  const pronote = $('openPronote');
   const message = $('attendanceMessage');
   dateField.value = carnetDay();
 
@@ -270,7 +186,6 @@ function renderCarnetAttendance(group, term, students) {
     const count = (number, word) => `${number} ${word}${number > 1 ? 's' : ''}`;
     $('attendanceSummary').textContent = `${count(total.present, 'présent')} · ${count(total.absent, 'absent')} · Parmi les présents, ${count(total.excused, 'dispensé')} et ${count(total.forgot, 'oubli')}`;
     $('attendanceRows').replaceChildren(...rows);
-    pronote.hidden = !day()?.finalized;
     message.textContent = day() ? '' : 'Un élève est présent par défaut. Coche les exceptions avant d’enregistrer.';
   }
 
@@ -280,8 +195,7 @@ function renderCarnetAttendance(group, term, students) {
   $('finishAttendance').onclick = () => {
     if (!writeDay(day()?.entries || {}, true)) return;
     paint();
-    message.textContent = 'Appel enregistré dans le carnet. Tu peux maintenant le valider dans PRONOTE.';
-    pronote.focus();
+    message.textContent = 'Appel enregistré dans le carnet.';
   };
 
   paint();

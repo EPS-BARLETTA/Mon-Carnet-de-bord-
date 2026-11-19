@@ -70,6 +70,8 @@ p { line-height: 1.5; }
 .cover-court:first-child { background: var(--personal-color, #276b50); }
 .cover-court::before, .cover-court::after { position: absolute; content: ""; inset: 0 50% 0 auto; border-left: 2px solid #fff; }
 .cover-court::after { inset: 0 20%; border-right: 2px solid #fff; }
+.cover-photo { display: block; width: 100%; height: 100%; max-height: 630px; object-fit: cover; min-width: 0; }
+.home-photo-preview { display: block; max-width: 100%; max-height: 210px; border-radius: 8px; }
 .route { margin: 1.5em auto; }
 .route h1 { font-size: clamp(28px, 5vw, 44px); margin: 10px 0 22px; }
 .route-head, .class-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -82,16 +84,11 @@ p { line-height: 1.5; }
 .home-heading h1, .home-heading p { margin: 0; overflow-wrap: anywhere; }
 .home-heading p { margin-top: 8px; }
 .home-settings { background: #fff; border: 1px solid var(--line); }
-.class-tile { border-inline-start: 5px solid var(--personal-color); background: var(--personal-tint); }
 .class-tile h2, .personalized-class .carnet-head h1 { color: var(--personal-color); overflow-wrap: anywhere; }
 .personalized-class .carnet-head {
   border-inline-start: 5px solid var(--personal-color);
   padding-inline: 14px; background: var(--personal-tint); border-radius: 12px;
 }
-.pronote-card + .pronote-card { margin-top: 12px; }
-.pronote-card p { margin-block: 4px; }
-.pronote-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 8px; }
-.pronote-actions .action:not(.primary) { border: 1px solid var(--line); }
 .menu-grid, .class-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(240px,100%),1fr)); gap: 16px; }
 .menu-card {
   display: block;
@@ -139,12 +136,16 @@ dialog textarea { margin-block: 6px; }
 .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); z-index: 45; color: white; background: #14293e; padding: 8px 14px; border-radius: 11px; }
 @media (max-width: 680px) {
   .cover { grid-template-columns: 1fr; min-height: auto; }
+  .cover-photo { max-height: 390px; }
   .cover-art { padding: 6% 16% 14%; }
   .class-nav h1 { order: -1; width: 100%; }
 }
 
 .class-grid { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 10px; }
-.class-tile { border-radius: 8px; padding: 14px 16px; border-left: 4px solid var(--accent); overflow-wrap: anywhere; }
+.class-tile {
+  border-radius: 8px; padding: 14px 16px; border-inline-start: 5px solid var(--personal-color);
+  background: var(--personal-tint); overflow-wrap: anywhere;
+}
 .class-tile h2 { font-size: 21px; }
 .class-tile p { margin-top: 4px; }
 .board-directory-card { display: flex; align-items: center; gap: 10px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 8px; background: white; }

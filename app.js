@@ -14,11 +14,17 @@ const APPEARANCE_COLORS = {
   violet: ['Violet', '#65428b', '#f2eafb'],
   terre: ['Terracotta', '#884630', '#faeee8'],
   ardoise: ['Ardoise', '#425968', '#eaf0f4'],
+  rose: ['Rose', '#8a315c', '#faebf3'],
+  turquoise: ['Turquoise', '#17676d', '#e7f5f4'],
+  ocre: ['Ocre', '#76540e', '#fbf2d9'],
+  bordeaux: ['Bordeaux', '#843446', '#faebef'],
+  indigo: ['Indigo', '#414487', '#eeeeff'],
 };
 const DEFAULT_HOME = {
   title: 'Mon Carnet de bord EPS',
   intro: 'Fais l’appel, retrouve les notes et organise tes séances par classe.',
   color: 'vert',
+  photo: '',
 };
 const MAX_OPEN_BOARDS = 4;
 const content = $('content');
@@ -36,6 +42,8 @@ try {
 } catch {
   canReadStorage = false;
 }
+assignClassColors();
+try { localStorage.removeItem('mon-carnet-eps-pronote-direct'); } catch {}
 
 let noticeTimer;
 function notify(message) {
@@ -78,6 +86,33 @@ function appearanceColor(value) {
   return Object.hasOwn(APPEARANCE_COLORS, value) ? value : 'vert';
 }
 
+function nextClassColor(groups) {
+  const colors = Object.keys(APPEARANCE_COLORS);
+  const counts = new Map(colors.map(color => [color, 0]));
+  for (const {color} of groups) {
+    if (counts.has(color)) counts.set(color, counts.get(color) + 1);
+  }
+  return colors.reduce((best, color) => counts.get(color) < counts.get(best) ? color : best);
+}
+
+function assignClassColors() {
+  const assigned = [];
+  for (const group of classes) {
+    if (!Object.hasOwn(APPEARANCE_COLORS, group.color) ||
+        (!group.colorAssigned && group.color === 'vert' && assigned.some(item => item.color === 'vert'))) {
+      continue;
+    }
+    group.colorAssigned = true;
+    assigned.push(group);
+  }
+  for (const group of classes) {
+    if (assigned.includes(group)) continue;
+    group.color = nextClassColor(assigned);
+    group.colorAssigned = true;
+    assigned.push(group);
+  }
+}
+
 function appearanceOptions(value) {
   return Object.entries(APPEARANCE_COLORS).map(([id, [label]]) =>
     `<option value="${id}" ${appearanceColor(value) === id ? 'selected' : ''}>${label}</option>`).join('');
@@ -95,6 +130,8 @@ function homeAppearance() {
       title: typeof settings.title === 'string' && settings.title.trim() ? settings.title.trim().slice(0, 70) : DEFAULT_HOME.title,
       intro: typeof settings.intro === 'string' ? settings.intro.slice(0, 160) : DEFAULT_HOME.intro,
       color: appearanceColor(settings.color),
+      photo: typeof settings.photo === 'string' && settings.photo.length <= 1000000 &&
+        /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(settings.photo) ? settings.photo : '',
     };
   } catch { return DEFAULT_HOME; }
 }
@@ -111,31 +148,89 @@ function renderHomeSettings() {
       <textarea id="homeIntro" rows="2" maxlength="160">${esc(current.intro)}</textarea>
       <label for="homeColor">Couleur de l’accueil</label>
       <select id="homeColor">${appearanceOptions(current.color)}</select>
+      <label for="homePhoto">Photo d’accueil</label>
+      <input id="homePhoto" type="file" accept="image/*">
+      <img id="homePhotoPreview" class="home-photo-preview" alt="Aperçu de la photo d’accueil" hidden>
+      <button id="homePhotoRemove" type="button" hidden>Retirer la photo</button>
+      <p id="homePhotoStatus" class="muted" role="status" hidden></p>
       <div class="actions">
         <button id="homeReset" type="button">Rétablir les valeurs par défaut</button>
-        <button class="primary">Enregistrer</button>
+        <button id="homeSave" class="primary">Enregistrer</button>
       </div>
     </form>
   </section>`;
+  let photo = current.photo;
+  let photoRequest = 0;
+  const fileInput = $('homePhoto');
+  const preview = $('homePhotoPreview');
+  const remove = $('homePhotoRemove');
+  const status = $('homePhotoStatus');
+  const saveButton = $('homeSave');
+  function showPhoto() {
+    preview.hidden = remove.hidden = !photo;
+    if (photo) preview.src = photo;
+    else preview.removeAttribute('src');
+  }
+  function clearPhoto() {
+    photoRequest++;
+    photo = '';
+    status.hidden = true;
+    saveButton.disabled = false;
+    showPhoto();
+  }
+  remove.onclick = clearPhoto;
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    fileInput.value = '';
+    if (!file) return;
+    const request = ++photoRequest;
+    saveButton.disabled = true;
+    status.hidden = false;
+    status.textContent = 'Préparation de la photo…';
+    try {
+      if (file.size > 30 * 1024 * 1024) throw new Error('La photo dépasse 30 Mo.');
+      const image = await imageFromFile(file);
+      const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = rosterCanvas(Math.max(1, Math.round(image.naturalWidth * scale)), Math.max(1, Math.round(image.naturalHeight * scale)));
+      const context = canvas.getContext('2d');
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const encoded = canvas.toDataURL('image/jpeg', .8);
+      if (encoded.length > 1000000) throw new Error('Choisis une photo moins détaillée.');
+      if (request !== photoRequest) return;
+      photo = encoded;
+      status.hidden = true;
+      showPhoto();
+    } catch (error) {
+      if (request === photoRequest) status.textContent = error.message || 'Impossible d’ouvrir la photo.';
+    } finally {
+      if (request === photoRequest) saveButton.disabled = false;
+    }
+  };
   $('homeReset').onclick = () => {
     $('homeTitle').value = DEFAULT_HOME.title;
     $('homeIntro').value = DEFAULT_HOME.intro;
     $('homeColor').value = DEFAULT_HOME.color;
+    clearPhoto();
   };
   $('homeAppearance').onsubmit = event => {
     event.preventDefault();
+    if (saveButton.disabled) return;
     try {
       localStorage.setItem(HOME_KEY, JSON.stringify({
         title: $('homeTitle').value.trim() || DEFAULT_HOME.title,
         intro: $('homeIntro').value.trim(),
         color: appearanceColor($('homeColor').value),
+        photo,
       }));
     } catch {
       notify('Enregistrement impossible dans ce navigateur.');
       return;
     }
-    location.hash = '#accueil';
+    location.hash = '';
   };
+  showPhoto();
 }
 
 function boardRoute(group, board) {
@@ -397,7 +492,7 @@ function renderClassForm(group) {
       <label for="className">Nom de la classe</label>
       <input id="className" maxlength="80" required value="${esc(group?.name || '')}" placeholder="Ex. 6e B">
       <label for="classColor">Couleur de la classe</label>
-      <select id="classColor">${appearanceOptions(group?.color)}</select>
+      <select id="classColor">${appearanceOptions(group?.color || nextClassColor(classes))}</select>
       <div class="roster-import">
         <button id="importPortraits" class="primary" type="button">Importer un trombinoscope</button>
         <input type="file" id="pictureInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden>
@@ -431,7 +526,8 @@ function renderClassForm(group) {
 
   function saveRoster(students, reportError) {
     const previous = classes;
-    const updated = {...group, id: group?.id || uid(), name: name.value.trim(), color: appearanceColor($('classColor').value), students,
+    const updated = {...group, id: group?.id || uid(), name: name.value.trim(),
+      color: appearanceColor($('classColor').value), colorAssigned: true, students,
       boards: group?.boards || [{id: 'principal', name: 'Tableau principal'}]};
     classes = group ? classes.map(c => c.id === group.id ? updated : c) : [...classes, updated];
     if (!save(reportError)) {
@@ -502,10 +598,15 @@ function render() {
     const intro = hero.querySelector('p');
     intro.textContent = home.intro;
     intro.hidden = !home.intro;
+    if (home.photo) {
+      const image = document.createElement('img');
+      image.className = 'cover-photo';
+      image.src = home.photo;
+      image.alt = 'Photo d’accueil personnalisée';
+      hero.querySelector('.cover-art').replaceWith(image);
+    }
   } else if (page === 'personnaliser') {
     renderHomeSettings();
-  } else if (page === 'pronote') {
-    renderPronoteAccess();
   } else if (page === 'creer') {
     renderClassForm();
   } else if (page === 'classes') {

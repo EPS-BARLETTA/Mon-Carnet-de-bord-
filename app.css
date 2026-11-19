@@ -48,6 +48,14 @@ p { line-height: 1.5; }
 }
 .brand { font-weight: 780; text-decoration: none; }
 .app-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; }
+.backup-reminder {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 16px;
+  padding: 10px 16px; background: #f6edce; color: #503d0e;
+}
+.backup-reminder a { color: inherit; font-weight: 700; }
+.backup-card + .backup-card { margin-top: 14px; }
+.backup-card button { margin: 4px 4px 4px 0; }
+.backup-card p:first-child { margin-top: 0; }
 #content { width: min(1360px, 100%); margin-inline: auto; padding: clamp(14px, 3vw, 35px); }
 .cover {
   display: grid;

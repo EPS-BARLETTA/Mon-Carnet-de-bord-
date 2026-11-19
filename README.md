@@ -6,6 +6,7 @@ Application statique, prévue pour les séances d’EPS sur iPad ou ordinateur.
 - Feuille d’appel par date et trimestre, avec accès à l’historique. Présence, oubli d’affaires et dispenses sont suivis séparément.
 - Dispenses de séance avec durée facultative en minutes. Une dispense datée s’affiche pour toutes les séances concernées, y compris sur un autre trimestre.
 - Personnalisation du titre, du texte, de la couleur et de la photo d’accueil. Les classes reçoivent chacune une couleur modifiable.
+- Rappel dans le carnet chaque semaine et sauvegarde complète datée dans Fichiers. Le fichier contient les classes, photos, appels, notes, réglages, tableaux et barèmes. La restauration remplace le carnet de l’appareil après confirmation.
 - Notes par trimestre, barèmes, coefficients et moyenne sur 20.
 - Tableau blanc par trimestre avec séances réouvrables et exportables.
 

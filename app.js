@@ -586,6 +586,7 @@ function renderClassForm(group) {
 
 function render() {
   const [page, id, subpage, boardId, hiddenIds] = location.hash.slice(1).split('/');
+  updateBackupReminder();
   $('navHome').hidden = !page || page === 'accueil';
   const home = homeAppearance();
   document.querySelector('.brand').textContent = home.title;
@@ -605,6 +606,8 @@ function render() {
       image.alt = 'Photo d’accueil personnalisée';
       hero.querySelector('.cover-art').replaceWith(image);
     }
+  } else if (page === 'sauvegarde') {
+    renderBackup();
   } else if (page === 'personnaliser') {
     renderHomeSettings();
   } else if (page === 'creer') {

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#14293e">
   <meta name="description" content="Appel, notes et tableau blanc des classes en EPS.">
   <title>Mon Carnet de bord EPS</title>
-  <link rel="stylesheet" href="./app.css?v=14">
+  <link rel="stylesheet" href="./app.css?v=15">
   <link rel="stylesheet" href="./board.css?v=14">
   <link rel="manifest" href="./manifest.webmanifest">
   <script defer src="./portraits.js?v=8"></script>
@@ -15,15 +15,21 @@
   <script defer src="./session.js?v=12"></script>
   <link rel="stylesheet" href="./carnet.css">
   <script defer src="./carnet.js?v=4"></script>
-  <script defer src="./app.js?v=3"></script>
+  <script defer src="./backup.js?v=1"></script>
+  <script defer src="./app.js?v=4"></script>
 </head>
 <body>
   <header class="app-header">
     <a href="#" class="brand">Mon Carnet de bord EPS</a>
     <nav class="app-links" aria-label="Navigation principale">
       <a id="navHome" href="#accueil" hidden>Accueil</a>
+      <a href="#sauvegarde">Sauvegarde</a>
     </nav>
   </header>
+  <aside id="backupReminder" class="backup-reminder" hidden>
+    <span>La sauvegarde de la semaine est à faire.</span>
+    <a href="#sauvegarde">Sauvegarder le carnet</a>
+  </aside>
   <main id="content">
     <section class="cover">
       <div class="cover-copy">

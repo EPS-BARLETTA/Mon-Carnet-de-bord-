@@ -69,16 +69,14 @@ function denseBands(values, threshold, minimum, gap = 2) {
   return bands;
 }
 
-async function rosterTiles(file) {
-  if (file.size > 20 * 1024 * 1024) throw new Error('La capture dépasse 20 Mo.');
-  const image = await imageFromFile(file);
-  const scale = Math.min(1, 1800 / Math.max(image.width, image.height));
-  const source = rosterCanvas(Math.round(image.width * scale), Math.round(image.height * scale));
+function rosterTiles(image, {x, y, width: cropWidth, height: cropHeight}) {
+  const scale = Math.min(1, 1800 / Math.max(cropWidth, cropHeight));
+  const source = rosterCanvas(Math.round(cropWidth * scale), Math.round(cropHeight * scale));
   const {width, height} = source;
   const ctx = source.getContext('2d', {willReadFrequently: true});
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(image, 0, 0, width, height);
+  ctx.drawImage(image, x, y, cropWidth, cropHeight, 0, 0, width, height);
   const pixels = ctx.getImageData(0, 0, width, height).data;
   const dark = new Uint8Array(width * height);
   const rows = new Uint16Array(height);
@@ -110,16 +108,21 @@ async function rosterTiles(file) {
   if (layout.length < 2 || grid.reduce((n, row) => n + row.portraits.length, 0) > 80) {
     throw new Error('La grille n’a pas été reconnue. Utilise une capture complète avec les photos et les noms en dessous.');
   }
-  if (grid.some(row => row.portraits.some(([left, right]) =>
-    !layout.some(([x, xEnd]) => Math.abs(x - left) <= 8 && Math.abs(xEnd - right) <= 10)
-  ))) {
+  const columnFor = ([left, right]) => layout.findIndex(([start, end]) => {
+    const tolerance = Math.max(8, (end - start) * 0.12);
+    return Math.abs(start - left) <= tolerance && Math.abs(end - right) <= tolerance;
+  });
+  if (grid.some(row => {
+    const columns = row.portraits.map(columnFor);
+    return columns.includes(-1) || new Set(columns).size !== columns.length;
+  })) {
     throw new Error('Les portraits ne sont pas alignés. Recadre la capture sur la grille et réessaie.');
   }
   const tiles = [];
   for (const [i, row] of grid.entries()) {
     const portraitHeight = row.bottom - row.top;
     for (const [left, right] of row.portraits) {
-      const col = layout.findIndex(([x]) => Math.abs(x - left) <= 8);
+      const col = columnFor([left, right]);
       const textLeft = Math.max(0, left - 3);
       const textRight = Math.min(width, (layout[col + 1]?.[0] ?? width) - 4);
       const textBottom = Math.min(height, grid[i + 1]?.top ?? height, row.bottom + Math.round(portraitHeight * 0.275));
@@ -239,6 +242,53 @@ function validRosterPortrait(value) {
     return element;
   }
 
+  function rosterCrop(image, retry) {
+    const panel = document.createElement('div');
+    panel.className = 'pf-roster-crop';
+    panel.append(paragraph('Garde toutes les photos et les noms dans le cadre. Retire les menus et les bordures si nécessaire.'));
+    const scale = Math.min(1, 480 / Math.max(image.width, image.height));
+    const preview = rosterCanvas(Math.max(1, Math.round(image.width * scale)), Math.max(1, Math.round(image.height * scale)));
+    preview.setAttribute('aria-hidden', 'true');
+    panel.append(preview);
+    const margins = ['Haut', 'Droite', 'Bas', 'Gauche'].map(side => {
+      const label = document.createElement('label');
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = '0';
+      slider.max = '70';
+      slider.value = '0';
+      label.append(side, slider);
+      panel.append(label);
+      return slider;
+    });
+    const analyze = button('Analyser la zone cadrée', 'primary');
+    panel.append(analyze);
+    function bounds(width, height) {
+      const [top, right, bottom, left] = margins.map(slider => Number(slider.value) / 100);
+      return {x: width * left, y: height * top, width: width * (1 - left - right), height: height * (1 - top - bottom)};
+    }
+    function paint() {
+      const {width, height} = preview;
+      const crop = bounds(width, height);
+      const ctx = preview.getContext('2d');
+      ctx.drawImage(image, 0, 0, width, height);
+      ctx.fillStyle = '#10212bb5';
+      ctx.fillRect(0, 0, width, height);
+      analyze.disabled = crop.width < width * 0.15 || crop.height < height * 0.15;
+      if (analyze.disabled) return;
+      const {x, y} = crop;
+      ctx.drawImage(image, x / width * image.width, y / height * image.height,
+        crop.width / width * image.width, crop.height / height * image.height, x, y, crop.width, crop.height);
+      ctx.strokeStyle = '#23845f';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, crop.width - 2, crop.height - 2);
+    }
+    for (const slider of margins) slider.oninput = paint;
+    analyze.onclick = () => retry(bounds(image.width, image.height));
+    paint();
+    return panel;
+  }
+
   function importRoster({file, items, itemName, save, className}) {
     const existing = items.length > 0;
     const candidates = items.map((item, index) => ({id: String(index), ...itemName(item.line)}));
@@ -258,9 +308,23 @@ function validRosterPortrait(value) {
     modal.append(progress, list, footer);
     modal.showModal();
 
-    (async () => {
-      const tiles = await rosterTiles(file);
-      if (!tiles.length) throw Error('Aucun portrait trouvé. Essaie une capture du trombinoscope avec les noms visibles.');
+    async function analyze(image, crop, cropPanel) {
+      if (cropPanel) cropPanel.hidden = true;
+      progress.textContent = 'Recherche des portraits…';
+      let tiles;
+      try {
+        tiles = rosterTiles(image, crop);
+        if (!tiles.length) throw new Error('Aucun portrait trouvé dans cette zone.');
+      } catch (error) {
+        if (!modal.open) return;
+        progress.textContent = error.message || 'Impossible de lire cette zone.';
+        if (!cropPanel) {
+          cropPanel = rosterCrop(image, region => analyze(image, region, cropPanel));
+          modal.insertBefore(cropPanel, list);
+        }
+        cropPanel.hidden = false;
+        return;
+      }
       let readIssue = false;
       try {
         await readRosterTiles(tiles, n => {
@@ -387,6 +451,12 @@ function validRosterPortrait(value) {
         else update();
       };
       update();
+    }
+
+    (async () => {
+      if (file.size > 20 * 1024 * 1024) throw new Error('La capture dépasse 20 Mo.');
+      const image = await imageFromFile(file);
+      if (modal.open) await analyze(image, {x: 0, y: 0, width: image.width, height: image.height});
     })().catch(error => {
       if (modal.open) progress.textContent = error.message || 'Impossible de lire la capture.';
     });

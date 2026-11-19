@@ -550,6 +550,7 @@ function renderBackup() {
       if (!code) throw Error('Code introuvable sur cet appareil.');
       $('cloudCodeValue').textContent = code;
       $('cloudCodeBox').hidden = false;
+      refreshCloud().catch(() => {});
     } catch (error) {
       cloudReport(error.message);
     } finally { busy(false); }

@@ -8,6 +8,11 @@ const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toStri
 const today = () => new Date().toISOString().slice(0, 10);
 const STORAGE_KEY = 'mon-carnet-eps-v1';
 const HOME_KEY = 'mon-carnet-eps-accueil';
+const BUILTIN_PHOTOS = {
+  'fond:cabines': ['Cabines jaunes et orange', './fonds/cabines.webp'],
+  'fond:glacier': ['Glacier sous le ciel bleu', './fonds/glacier.webp'],
+  'fond:telepherique': ['Téléphérique dans les Alpes', './fonds/telepherique.webp'],
+};
 const APPEARANCE_COLORS = {
   vert: ['Vert', '#226047', '#e8f3eb'],
   bleu: ['Bleu', '#254e82', '#e9f1fc'],
@@ -138,17 +143,30 @@ function homeAppearance() {
 }
 
 function appearancePhoto(value) {
-  return typeof value === 'string' && value.length <= 1000000 &&
+  if (typeof value !== 'string') return '';
+  if (Object.hasOwn(BUILTIN_PHOTOS, value)) return value;
+  return value.length <= 1000000 &&
     /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value) ? value : '';
 }
 
-function bannerPhoto(value) {
+function appearancePhotoSource(value) {
   const photo = appearancePhoto(value);
+  return BUILTIN_PHOTOS[photo]?.[1] || photo;
+}
+
+function bannerPhoto(value) {
+  const photo = appearancePhotoSource(value);
   return photo ? `<img class="banner-photo" src="${photo}" alt="">` : '';
 }
 
 function photoFields(prefix, label) {
-  return `<label for="${prefix}Photo">${label}</label>
+  return `<label for="${prefix}Preset">${label}</label>
+    <select id="${prefix}Preset">
+      <option value="">Sans photo</option>
+      ${Object.entries(BUILTIN_PHOTOS).map(([id, [name]]) => `<option value="${id}">${name}</option>`).join('')}
+      <option value="custom" hidden>Photo personnelle</option>
+    </select>
+    <label for="${prefix}Photo">Importer une photo personnelle</label>
     <input id="${prefix}Photo" type="file" accept="image/*">
     <img id="${prefix}PhotoPreview" class="home-photo-preview" alt="Aperçu" hidden>
     <button id="${prefix}PhotoRemove" type="button" hidden>Retirer la photo</button>
@@ -160,12 +178,16 @@ function photoPicker(prefix, initial, maxSide = 1280) {
   let pending = false;
   let photoRequest = 0;
   const fileInput = $(prefix + 'Photo');
+  const preset = $(prefix + 'Preset');
   const preview = $(prefix + 'PhotoPreview');
   const remove = $(prefix + 'PhotoRemove');
   const status = $(prefix + 'PhotoStatus');
   function showPhoto() {
     preview.hidden = remove.hidden = !photo;
-    if (photo) preview.src = photo;
+    const integrated = Object.hasOwn(BUILTIN_PHOTOS, photo);
+    preset.options[preset.options.length - 1].hidden = !photo || integrated;
+    preset.value = photo && !integrated ? 'custom' : photo;
+    if (photo) preview.src = appearancePhotoSource(photo);
     else preview.removeAttribute('src');
   }
   function clearPhoto() {
@@ -176,6 +198,14 @@ function photoPicker(prefix, initial, maxSide = 1280) {
     showPhoto();
   }
   remove.onclick = clearPhoto;
+  preset.onchange = () => {
+    if (preset.value === 'custom') return;
+    photoRequest++;
+    pending = false;
+    photo = appearancePhoto(preset.value);
+    status.hidden = true;
+    showPhoto();
+  };
   fileInput.onchange = async () => {
     const file = fileInput.files[0];
     fileInput.value = '';
@@ -648,7 +678,7 @@ function render() {
     if (home.photo) {
       const image = document.createElement('img');
       image.className = 'cover-photo';
-      image.src = home.photo;
+      image.src = appearancePhotoSource(home.photo);
       image.alt = 'Photo d’accueil personnalisée';
       hero.querySelector('.cover-art').replaceWith(image);
     }

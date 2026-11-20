@@ -86,6 +86,9 @@ const btn=(label,act,kind="")=>'<button type="button" class="btn '+kind+'" data-
 const menu=(label,items,keep)=>'<details class="menu"'+(keep?' data-keep="'+esc(keep)+'"':'')+'><summary class="btn small" aria-label="'+esc(label)+'">⋯</summary><div class="menu-list">'+items+'</div></details>';
 const field=(label,id,value="",type="text",extra="")=>'<label class="field">'+esc(label)+'<input id="'+id+'" type="'+type+'" value="'+esc(value)+'" '+extra+'></label>';
 const input=id=>$(id)?.value.trim()||"";
+/* Portraits du trombinoscope du carnet. */
+const initials=n=>String(n||"").split(/[\s-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+const face=(s,size="")=>{const src=/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(s?.portrait||"")?s.portrait:"";return src?'<img class="face '+size+'" src="'+src+'" alt="" loading="lazy">':'<span class="face face-empty '+size+'" aria-hidden="true">'+esc(initials(s?.name))+'</span>'};
 const sexTag=s=>s.sex==="F"?'<span class="sex" title="Fille">F</span>':s.sex==="M"?'<span class="sex" title="Garçon">G</span>':"";
 function hasObservation(t,sid){const r=t.results[sid]||{};return !!(r.comment||r.drawing||Object.values(r.levels||{}).some(Boolean)||(r.note!==""&&r.note!=null)||(r.ccf&&(Object.values(r.ccf.v||{}).some(x=>String(x??"").trim())||Object.values(r.ccf.d||{}).some(Boolean))))}
 function studentState(t,sid){const r=t.results[sid]||{};if(STATUS[r.status])return '<span class="state '+r.status+'">'+STATUS[r.status]+'</span>';return hasObservation(t,sid)?'<span class="state done">Observé</span>':'<span class="state">À observer</span>'}
@@ -135,7 +138,7 @@ class(){
 students(){
  const c=cls(),list=[...c.students].sort(byName);
  return '<div class="crumbs">'+btn("← "+esc(c.name),"open-class:"+c.id,"quiet small")+'</div><div class="page-head"><div><h1>Élèves de '+esc(c.name)+'</h1><p class="muted">Un élève ajouté ici apparaît dans toutes les évaluations de la classe.</p></div><div class="row">'+btn("Importer un CSV","import-csv")+btn("Coller une liste","paste-students")+btn("+ Ajouter un élève","add-student","primary")+'</div></div>'+
- (list.length?'<div class="student-grid">'+list.map(s=>'<div class="student-line"><span>'+esc(s.name)+sexTag(s)+'</span>'+btn("Modifier","edit-student:"+s.id,"small quiet")+""+'</div>').join("")+'</div>':'<div class="empty"><p>Aucun élève dans cette classe pour l’instant.</p></div>');
+ (list.length?'<div class="student-grid">'+list.map(s=>'<div class="student-line"><span>'+face(s,"sm")+esc(s.name)+sexTag(s)+'</span>'+btn("Modifier","edit-student:"+s.id,"small quiet")+""+'</div>').join("")+'</div>':'<div class="empty"><p>Aucun élève dans cette classe pour l’instant.</p></div>');
 },
 storage(){
  const n=storageBytes(),drawings=data.classes.flatMap(c=>c.tables.flatMap(t=>Object.values(t.results||{}))).filter(r=>r.drawing).length;
@@ -155,7 +158,7 @@ terrain(){
  groups.forEach(g=>{const before=g.studentIds.length;g.studentIds=g.studentIds.filter(sid=>{if(unique.has(sid))return false;unique.add(sid);return true});if(before!==g.studentIds.length)changed=true});
  if(changed)save();
  const out=s=>STATUS[t.results[s.id]?.status];
- const chip=st=>'<span class="chip'+(terrainSelection.has(st.id)?" picked":"")+(out(st)?" out":"")+'"><button type="button" class="chip-name" aria-pressed="'+terrainSelection.has(st.id)+'" data-drag-student="'+esc(st.id)+'" data-action="terrain-pick:'+esc(st.id)+'">'+esc(st.name)+sexTag(st)+'</button><button type="button" class="chip-open" data-action="terrain-student-open:'+esc(st.id)+'" aria-label="Ouvrir la fiche de '+esc(st.name)+'">↗</button></span>';
+ const chip=st=>'<span class="chip'+(terrainSelection.has(st.id)?" picked":"")+(out(st)?" out":"")+'"><button type="button" class="chip-name" aria-pressed="'+terrainSelection.has(st.id)+'" data-drag-student="'+esc(st.id)+'" data-action="terrain-pick:'+esc(st.id)+'">'+face(st,"sm")+esc(st.name)+sexTag(st)+'</button><button type="button" class="chip-open" data-action="terrain-student-open:'+esc(st.id)+'" aria-label="Ouvrir la fiche de '+esc(st.name)+'">↗</button></span>';
  const free=[...c.students].sort(byName).filter(st=>!unique.has(st.id));
  const n=terrainSelection.size;
  let html=evalHead()+'<div class="page-head"><div><h2>Composer les groupes</h2><p class="muted">Touche des élèves pour les sélectionner, ou maintiens un nom appuyé pour le glisser.</p></div><div class="row">'+btn("Groupes automatiques","auto-groups")+btn("+ Groupe vide","terrain-new")+'</div></div>';
@@ -175,11 +178,11 @@ observation(){
  const collective=t.observables.some(o=>observableScope(o)==="collective");
  return evalHead()+'<div class="row" style="margin-bottom:10px">'+btn("← Tous les groupes","observation-back","quiet small")+'</div><div class="bib-head" '+bibStyle(g)+'><span>'+esc(g.name)+'</span>'+btn("Modifier le groupe","terrain-rename:"+g.id,"small")+'</div>'+
  '<div class="'+(collective?"two-col":"")+'"><section class="sheet"><label class="field">Observation collective<textarea data-observation-group="'+esc(g.id)+'" placeholder="Coopération, sécurité, organisation…">'+esc(g.comment||"")+'</textarea></label></section>'+(collective?competencyPanel(t,g.levels||{},"collective",g.id):"")+'</div>'+
- '<div class="student-cards">'+members.map(st=>{const a=t.results[st.id]||{};return '<section class="student-card"><div class="student-card-head"><strong>'+esc(st.name)+'</strong>'+btn("Fiche complète","observation-student:"+st.id,"small")+'</div><label class="field">Note /20'+noteField(t,st.id,a)+'</label><label class="field">Observation<textarea data-observation-student="'+esc(st.id)+'" placeholder="Ce que j’observe…">'+esc(a.comment||"")+'</textarea></label>'+competencyPanel(t,a.levels||{},"individual",st.id,true)+scoreLine(t,st.id)+'</section>'}).join("")+'</div>';
+ '<div class="student-cards">'+members.map(st=>{const a=t.results[st.id]||{};return '<section class="student-card"><div class="student-card-head"><strong>'+face(st)+esc(st.name)+'</strong>'+btn("Fiche complète","observation-student:"+st.id,"small")+'</div><label class="field">Note /20'+noteField(t,st.id,a)+'</label><label class="field">Observation<textarea data-observation-student="'+esc(st.id)+'" placeholder="Ce que j’observe…">'+esc(a.comment||"")+'</textarea></label>'+competencyPanel(t,a.levels||{},"individual",st.id,true)+scoreLine(t,st.id)+'</section>'}).join("")+'</div>';
 },
 "observation-individual"(){
  const c=cls(),t=tab(),students=[...c.students].sort(byName),done=students.filter(s=>hasObservation(t,s.id)||t.results[s.id]?.status).length;
- return evalHead()+obsSwitch()+(students.length?'<div class="progress"><span>'+done+' sur '+students.length+'</span><div class="progress-bar"><span style="width:'+Math.round(done/students.length*100)+'%"></span></div></div><div class="obs-list">'+students.map(st=>'<button type="button" class="obs-row" data-action="individual-student:'+esc(st.id)+'"><span>'+esc(st.name)+'</span>'+studentState(t,st.id)+'</button>').join("")+'</div>':noStudents());
+ return evalHead()+obsSwitch()+(students.length?'<div class="progress"><span>'+done+' sur '+students.length+'</span><div class="progress-bar"><span style="width:'+Math.round(done/students.length*100)+'%"></span></div></div><div class="obs-list">'+students.map(st=>'<button type="button" class="obs-row" data-action="individual-student:'+esc(st.id)+'"><span>'+face(st,"sm")+esc(st.name)+'</span>'+studentState(t,st.id)+'</button>').join("")+'</div>':noStudents());
 },
 "observation-student"(){
  const c=cls(),t=tab(),st=c.students.find(x=>x.id===observationStudentId);
@@ -189,7 +192,7 @@ observation(){
  const status=[["","Présent"],["absent","Absent"],["dispense","Dispensé"]].map(([k,l])=>'<button type="button" data-status="'+k+'" aria-pressed="'+((a.status||"")===k)+'" data-action="set-status:'+esc(st.id)+':'+k+'">'+l+'</button>').join("");
  const panel=competencyPanel(t,a.levels||{},"individual",st.id);
  return evalHead()+'<div class="row" style="margin-bottom:10px">'+btn(g?"← "+esc(g.name):"← Liste des élèves","observation-student-back","quiet small")+'</div>'+
- '<div class="sheet-nav">'+(prev?btn("‹ <span>"+esc(prev.name)+"</span>","go-student:"+prev.id):'<span></span>')+'<div><h2>'+esc(st.name)+'</h2><span class="muted small-text">'+(i+1)+' sur '+order.length+'</span></div>'+(next?btn("<span>"+esc(next.name)+"</span> ›","go-student:"+next.id,"primary"):'<span></span>')+'</div>'+
+ '<div class="sheet-nav">'+(prev?btn("‹ <span>"+esc(prev.name)+"</span>","go-student:"+prev.id):'<span></span>')+'<div><h2>'+face(st,"lg")+esc(st.name)+'</h2><span class="muted small-text">'+(i+1)+' sur '+order.length+'</span></div>'+(next?btn("<span>"+esc(next.name)+"</span> ›","go-student:"+next.id,"primary"):'<span></span>')+'</div>'+
  '<div class="two-col"><section class="sheet"><div class="seg status-seg" role="group" aria-label="Présence">'+status+'</div><label class="field">Note /20'+noteField(t,st.id,a)+'</label><label class="field">Observation<textarea class="obs-text" data-observation-student="'+esc(st.id)+'" placeholder="Ce que j’observe pendant l’activité…">'+esc(a.comment||"")+'</textarea></label>'+btn(a.drawing?"Modifier la note manuscrite":"Écrire à la main","draw:"+st.id)+(a.drawing?'<img class="drawing-preview" alt="Note manuscrite de '+esc(st.name)+'" src="'+esc(safeImage(a.drawing))+'">':"")+'</section><div>'+panel+scoreLine(t,st.id)+'</div></div>';
 },
 table(){
@@ -200,7 +203,7 @@ table(){
  return evalHead()+'<div class="page-head"><h2>Bilan de l’évaluation</h2><div class="row">'+btn("Exporter les notes (CSV)","export-csv")+btn("Archiver en HTML","export-html")+'</div></div><div class="stats"><div><strong>'+notes.length+'/'+students.length+'</strong>élèves notés</div><div><strong>'+mean+'</strong>moyenne de classe</div><div><strong>'+absent+'</strong>absents ou dispensés</div></div>'+
  (students.length?'<div class="tablewrap"><table><thead><tr><th>Élève</th>'+ind.map(o=>'<th>'+esc(o.name)+'</th>').join("")+'<th>Moyenne /4</th>'+(pts?'<th>Points</th>':"")+'<th>Note /20</th><th>Observation</th></tr></thead><tbody>'+students.map(s=>{
   const a=t.results[s.id]||{},m=degreeMean(ind,a);
-  return '<tr><td>'+esc(s.name)+(STATUS[a.status]?' <span class="state '+a.status+'">'+STATUS[a.status]+'</span>':"")+'</td>'+ind.map(o=>'<td><div class="mini-degrees">'+[1,2,3,4].map(n=>'<button type="button" class="degree d'+n+'" aria-pressed="'+(a.levels?.[o.id]===n)+'" aria-label="'+esc(s.name)+', '+esc(o.name)+', degré '+n+'" data-action="level:'+esc(s.id)+':'+esc(o.id)+':'+n+'">'+n+'</button>').join("")+'</div></td>').join("")+'<td><b>'+(m||"–")+'</b></td>'+(pts?scoreCells(t,s.id):"")+'<td>'+noteField(t,s.id,a,"input")+'</td><td><input class="input" data-observation-student="'+esc(s.id)+'" value="'+esc(a.comment||"")+'" aria-label="Observation de '+esc(s.name)+'"></td></tr>'}).join("")+'</tbody></table></div>':noStudents());
+  return '<tr><td>'+face(s,"sm")+esc(s.name)+(STATUS[a.status]?' <span class="state '+a.status+'">'+STATUS[a.status]+'</span>':"")+'</td>'+ind.map(o=>'<td><div class="mini-degrees">'+[1,2,3,4].map(n=>'<button type="button" class="degree d'+n+'" aria-pressed="'+(a.levels?.[o.id]===n)+'" aria-label="'+esc(s.name)+', '+esc(o.name)+', degré '+n+'" data-action="level:'+esc(s.id)+':'+esc(o.id)+':'+n+'">'+n+'</button>').join("")+'</div></td>').join("")+'<td><b>'+(m||"–")+'</b></td>'+(pts?scoreCells(t,s.id):"")+'<td>'+noteField(t,s.id,a,"input")+'</td><td><input class="input" data-observation-student="'+esc(s.id)+'" value="'+esc(a.comment||"")+'" aria-label="Observation de '+esc(s.name)+'"></td></tr>'}).join("")+'</tbody></table></div>':noStudents());
 },
 bilan(){return bilanPage()}
 };
@@ -361,7 +364,7 @@ function bilanPage(){
  html+='<div class="remark-list">'+students.map(s=>{
   const tags=b.tags[s.id]||[],m=retainedMean(c,tri,s.id);
   const summary=bilanNotes(c,tri,s.id).map(x=>esc(x.t.name)+' '+(x.status?STATUS[x.status].toLowerCase():x.note===null?"–":fr(x.note))).join(" · ");
-  return '<section class="sheet remark-card"><div class="remark-head"><strong>'+esc(s.name)+'</strong><span class="remark-mean" data-bilan-mean="'+esc(s.id)+'">'+(m===null?"–":fr(m))+'</span></div><p class="muted small-text remark-notes">'+summary+'</p><div class="remark-tags">'+STUDENT_TAGS.map(([k,l])=>tagBtn(s.id,k,l,tags.includes(k))).join("")+'</div><textarea class="input remark-text" data-bilan-remark="'+esc(s.id)+'" rows="3" placeholder="Appréciation pour le bulletin…" aria-label="Appréciation de '+esc(s.name)+'">'+esc(b.remarks[s.id]||"")+'</textarea><div class="remark-foot"><span class="muted small-text" data-count="'+esc(s.id)+'">'+countLabel(b.remarks[s.id])+'</span><div class="row">'+btn("Effacer","bilan-clear:"+s.id,"small quiet")+btn("Copier","bilan-copy:"+s.id,"small quiet")+btn("Reformuler","bilan-propose:"+s.id,"small")+'</div></div></section>';
+  return '<section class="sheet remark-card"><div class="remark-head"><strong>'+face(s)+esc(s.name)+'</strong><span class="remark-mean" data-bilan-mean="'+esc(s.id)+'">'+(m===null?"–":fr(m))+'</span></div><p class="muted small-text remark-notes">'+summary+'</p><div class="remark-tags">'+STUDENT_TAGS.map(([k,l])=>tagBtn(s.id,k,l,tags.includes(k))).join("")+'</div><textarea class="input remark-text" data-bilan-remark="'+esc(s.id)+'" rows="3" placeholder="Appréciation pour le bulletin…" aria-label="Appréciation de '+esc(s.name)+'">'+esc(b.remarks[s.id]||"")+'</textarea><div class="remark-foot"><span class="muted small-text" data-count="'+esc(s.id)+'">'+countLabel(b.remarks[s.id])+'</span><div class="row">'+btn("Effacer","bilan-clear:"+s.id,"small quiet")+btn("Copier","bilan-copy:"+s.id,"small quiet")+btn("Reformuler","bilan-propose:"+s.id,"small")+'</div></div></section>';
  }).join("")+'</div>';
  return html;
 }
@@ -617,7 +620,7 @@ const ccfPages={
  const rows=students.map(s=>{const r=t.results[s.id]||{},e=ccfEval(t,s.id,c);if(e.note!=null||STATUS[r.status])done++;
   const state=STATUS[r.status]?'<span class="state '+r.status+'">'+STATUS[r.status]+'</span>':e.note!=null?'<span class="state done">'+fr(e.note)+' / 20</span>':hasObservation(t,s.id)?'<span class="state">En cours</span>':'<span class="state">À évaluer</span>';
   const r2=x=>x==null?"–":fr(Math.round(x*100)/100),parts=STATUS[r.status]?"":'<span class="ccf-row-parts">AFL1 '+r2(e.afl1pts)+'/12 · AFL2 '+r2(e.afl2pts)+'/'+2*e.R.c2+' · AFL3 '+r2(e.afl3pts)+'/'+2*e.R.c3+'</span>';
-  return '<button type="button" class="obs-row" data-action="ccf-open:'+esc(s.id)+'"><span>'+esc(s.name)+sexTag(s)+parts+'</span>'+state+'</button>'}).join("");
+  return '<button type="button" class="obs-row" data-action="ccf-open:'+esc(s.id)+'"><span>'+face(s,"sm")+esc(s.name)+sexTag(s)+parts+'</span>'+state+'</button>'}).join("");
  return evalHead()+'<p class="muted ccf-epreuve">'+esc(sp.epreuve)+'</p><div class="progress"><span>'+done+' sur '+students.length+'</span><div class="progress-bar"><span style="width:'+Math.round(done/students.length*100)+'%"></span></div></div><div class="obs-list">'+rows+'</div>';
 },
 "ccf-student"(){
@@ -627,7 +630,7 @@ const ccfPages={
  const r=t.results[st.id]||{},cc=r.ccf||{},v=cc.v||{},e=ccfEval(t,st.id,c);
  const seg=(label,items,cur,act)=>'<div class="ccf-choice"><span class="ccf-choice-label">'+label+'</span><div class="seg">'+items.map(([k,l])=>'<button type="button" aria-pressed="'+(cur===k)+'" data-action="'+act+':'+esc(st.id)+':'+k+'">'+l+'</button>').join("")+'</div></div>';
  let html=evalHead()+'<div class="row" style="margin-bottom:10px">'+btn("← Liste des élèves","ccf-back","quiet small")+'</div>'+
- '<div class="sheet-nav">'+(prev?btn("‹ <span>"+esc(prev.name)+"</span>","ccf-open:"+prev.id):'<span></span>')+'<div><h2>'+esc(st.name)+'</h2><span class="muted small-text">'+(i+1)+' sur '+order.length+'</span></div>'+(next?btn("<span>"+esc(next.name)+"</span> ›","ccf-open:"+next.id,"primary"):'<span></span>')+'</div>';
+ '<div class="sheet-nav">'+(prev?btn("‹ <span>"+esc(prev.name)+"</span>","ccf-open:"+prev.id):'<span></span>')+'<div><h2>'+face(st,"lg")+esc(st.name)+'</h2><span class="muted small-text">'+(i+1)+' sur '+order.length+'</span></div>'+(next?btn("<span>"+esc(next.name)+"</span> ›","ccf-open:"+next.id,"primary"):'<span></span>')+'</div>';
  html+='<div id="ccf-summary">'+ccfSummary(t,st)+'</div>';
  html+='<section class="sheet ccf-choices">'+seg("Présence",[["","Présent"],["absent","Absent"],["dispense","Dispensé"]],r.status||"","set-status")+
   (sp.sex?seg("Barème",[["F","Fille"],["M","Garçon"]],st.sex||"","ccf-sex"):"")+

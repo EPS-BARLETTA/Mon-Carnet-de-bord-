@@ -592,3 +592,10 @@ tbody tr:nth-child(even) td{background:#fbfaf6}
 .pf-row-afl{grid-template-columns:1fr 1fr 1fr}
 .pf-box strong{font-size:26px}
 }
+/* Portraits du carnet */
+.face{display:inline-block;flex:0 0 auto;width:36px;height:48px;border-radius:6px;object-fit:cover;vertical-align:middle;margin-right:10px;background:#e3e8ee}
+.face.sm{width:28px;height:37px;margin-right:8px}
+.face.lg{width:60px;height:80px;margin-right:14px;border-radius:8px}
+.face-empty{display:inline-grid;place-items:center;color:#46586d;font-size:12px;font-weight:700;letter-spacing:.02em}
+.face.lg.face-empty{font-size:18px}
+.chip .face{margin-right:6px}

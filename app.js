@@ -16,8 +16,7 @@ const BUILTIN_PHOTOS = {
   'fond:verdon': ['Escalade · Gorges du Verdon', './fonds/verdon.webp'],
   'fond:fontainebleau': ['Escalade · Blocs de Fontainebleau', './fonds/fontainebleau.webp'],
   'fond:vtt-dh': ['VTT · Descente (DH)', './fonds/vtt-dh.webp'],
-  'fond:vtt-xc': ['VTT · Cross-country (XC)', './fonds/vtt-xc.webp'],
-  'fond:poissons': ['Poissons · Récif corallien', './fonds/poissons.webp'],
+  'fond:poissons': ['Poissons · Coraux tropicaux', './fonds/recif-tropical.webp'],
 };
 const APPEARANCE_COLORS = {
   vert: ['Vert', '#226047', '#e8f3eb'],

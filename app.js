@@ -560,7 +560,10 @@ function renderMenu() {
       <h1>${esc(home.title)}</h1>
       ${home.intro ? `<p>${esc(home.intro)}</p>` : ''}
     </header>
-    <a class="action home-classes" href="#classes">Mes classes <span aria-hidden="true">→</span></a>
+    <a class="action home-classes" href="#classes" aria-label="Mes classes">
+      <span aria-hidden="true" data-outline="Mes classes">Mes classes</span>
+      <span aria-hidden="true" data-outline="→">→</span>
+    </a>
     <nav class="home-actions" aria-label="Options de l’accueil">
       <a class="action" href="#creer">Créer une classe</a>
       <a class="action" href="#personnaliser">Personnaliser</a>

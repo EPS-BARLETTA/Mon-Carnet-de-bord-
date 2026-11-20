@@ -57,10 +57,20 @@ p { line-height: 1.5; }
 .brand { font-weight: 780; text-decoration: none; }
 .app-links { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 18px; }
 .backup-reminder {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 16px;
-  padding: 10px 16px; background: #f6edce; color: #503d0e;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  align-self: center; gap: 4px 16px;
+  width: min(calc(100% - 24px), 720px); margin: 8px auto 0;
+  padding: 4px 8px 4px 14px; border: 1px solid #d3dce5; border-radius: 12px;
+  background: #edf2f7; color: #243b50; font-size: .875rem;
 }
-.backup-reminder a { color: inherit; font-weight: 700; }
+.backup-reminder > span { flex: 1 1 220px; overflow-wrap: anywhere; }
+.backup-reminder a {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+  margin-inline-start: auto; padding: 4px 12px; border-radius: 8px;
+  background: #fff; border: 1px solid #d3dce5; color: inherit;
+  font-weight: 700; text-decoration: none; text-align: center;
+}
+.backup-reminder a:hover { text-decoration: underline; text-underline-offset: .18em; }
 .backup-card + .backup-card { margin-top: 14px; }
 .backup-card button { margin: 4px 4px 4px 0; }
 .backup-card p:first-child { margin-top: 0; }
@@ -98,6 +108,13 @@ p { line-height: 1.5; }
 }
 .home-screen .app-header { background: rgb(8 19 29 / 50%); border-color: rgb(255 255 255 / 24%); }
 .home-screen .app-header a { color: white; }
+.home-screen .backup-reminder {
+  background: rgb(12 27 42 / 84%); border-color: rgb(255 255 255 / 25%); color: white;
+}
+.home-screen .backup-reminder a {
+  background: rgb(255 255 255 / 12%); border-color: rgb(255 255 255 / 38%);
+}
+.home-screen .backup-reminder a:focus-visible { outline-color: white; }
 .home-screen #content {
   flex: 1; display: grid; place-items: center;
   padding: clamp(16px, 5vw, 56px);
@@ -123,10 +140,27 @@ p { line-height: 1.5; }
 }
 .home-heading p { max-width: 36ch; margin: 10px auto 0; }
 .home-classes {
-  gap: 14px; width: min(100%, 350px); min-height: clamp(66px, 11vh, 88px);
-  background: var(--personal-tint); color: var(--personal-color);
-  border-radius: 18px; font-size: clamp(23px, 3.6vw, 34px);
-  box-shadow: 0 10px 30px rgb(8 19 29 / 26%);
+  gap: clamp(10px, 2vw, 18px); width: min(100%, 350px); min-height: clamp(66px, 11vh, 88px);
+  color: white; border-radius: 18px; font-size: clamp(28px, 4.8vw, 45px);
+  font-weight: 800; line-height: 1.15;
+}
+.home-classes:focus-visible { outline-color: white; box-shadow: 0 0 0 6px #0d1b2a; }
+.home-classes:hover { text-decoration: underline; text-underline-offset: .2em; }
+@supports (-webkit-text-stroke: 1px white) {
+  .home-classes span {
+    position: relative; isolation: isolate; color: transparent;
+    -webkit-text-stroke: 1px white;
+  }
+  /* Two white strokes, separated by a dark stroke for contrast over bright photos. */
+  .home-classes span::before, .home-classes span::after {
+    content: attr(data-outline); position: absolute; inset: 0; pointer-events: none;
+  }
+  .home-classes span::before { z-index: -2; -webkit-text-stroke: 5.5px white; }
+  .home-classes span::after { z-index: -1; -webkit-text-stroke: 3.5px #102235; }
+}
+@media (forced-colors: active) {
+  .home-classes span { color: LinkText; -webkit-text-stroke: 0; }
+  .home-classes span::before, .home-classes span::after { content: none; }
 }
 .home-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 9px; }
 .home-actions .action {
@@ -261,6 +295,5 @@ input[type="checkbox"] { min-height: 0; width: 22px; height: 22px; flex: none; a
 .merge-card { margin-top: 18px; }
 .merge-card h2 { margin-top: 0; }
 .merge-card select { display: block; margin: 6px 0 12px; }
-.cloud-reminder { background: #e7f0fb; color: #183b63; }
 .close-year h3 { margin: 18px 0 6px; }
 .close-year input#closeYearLabel { display: block; margin: 6px 0 12px; }

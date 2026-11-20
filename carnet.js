@@ -118,7 +118,7 @@ function renderCarnet(group, tab, term) {
     }).join('')}</nav>
     <nav class="carnet-tabs carnet-sections" aria-label="Carnet">
       <a href="${root}/appel/${term}" ${tab === 'appel' ? 'aria-current="page"' : ''}>Appel</a>
-      <a href="${root}/notes/${term}" ${tab === 'notes' ? 'aria-current="page"' : ''}>Notes</a>
+      <a href="${root}/notes/${term}" ${tab === 'notes' ? 'aria-current="page"' : ''}>Évaluations</a>
       <a href="${root}/bulletins/${term}" ${tab === 'bulletins' ? 'aria-current="page"' : ''}>Bulletins</a>
       <a href="${root}/trombinoscope/${term}" ${tab === 'trombinoscope' ? 'aria-current="page"' : ''}>Trombinoscope</a>
       ${group.principal === true ? `<a href="${root}/conseil/${term}" ${tab === 'conseil' ? 'aria-current="page"' : ''}>Prof principal</a>` : ''}
@@ -154,7 +154,7 @@ function renderCarnet(group, tab, term) {
     </dialog>
   </section>`;
   bindCarnetTermLocks(group);
-  if (tab === 'notes') renderCarnetGrades(group, term, students);
+  if (tab === 'notes') renderCarnetEvaluations(group, term, students);
   else if (tab === 'bulletins' || tab === 'conseil') renderBulletins(group, term, students, tab === 'conseil');
   else if (tab === 'trombinoscope') renderClassTrombinoscope(group, term, students);
   else renderCarnetAttendance(group, term, students);
@@ -516,6 +516,47 @@ function renderCarnetAttendance(group, term, students) {
 
   if (locked && !day()) dateField.value = Object.keys(termDays()).sort().at(-1) || dateField.value;
   paint();
+}
+
+function classeurLink(group, term) {
+  return `./classeur/#classe=${encodeURIComponent(group.id)}&t=${encodeURIComponent(term)}`;
+}
+
+function renderCarnetEvaluations(group, term, students) {
+  const panel = $('carnetContent');
+  const tables = (group.classeur?.tables || []).filter(table => table.trimester === 'T' + term);
+  const others = (group.classeur?.tables || []).length - tables.length;
+  const observed = table => students.filter(student => {
+    const result = table.results?.[student.id];
+    return result && (result.status || result.comment || result.drawing || result.note !== '' && result.note != null ||
+      Object.values(result.levels || {}).some(Boolean) || result.ccf);
+  }).length;
+  const link = classeurLink(group, term);
+  panel.innerHTML = `<section class="carnet-panel">
+    <div class="evaluations-launch">
+      <div>
+        <h2>Évaluations du trimestre ${esc(term)}</h2>
+        <p class="muted">Compétences et degrés, mode terrain avec groupes, CCF, bilan du trimestre et remarques.</p>
+      </div>
+      <a class="button primary" href="${link}">Ouvrir les évaluations</a>
+    </div>
+    ${tables.length ? `<ul class="evaluations-list">${tables.map(table => `<li><a href="${link}"><strong>${esc(table.name)}</strong>
+      <span class="muted">${observed(table)} / ${students.length} élève${students.length > 1 ? 's' : ''} observé${observed(table) > 1 ? 's' : ''}</span></a></li>`).join('')}</ul>`
+      : `<p class="muted">Aucune évaluation pour ce trimestre.${others ? ` ${others} évaluation${others > 1 ? 's' : ''} dans les autres trimestres.` : ''}</p>`}
+    <div id="legacyGrades"></div>
+  </section>`;
+  if ((group.evaluations?.[term] || []).length) {
+    const legacy = document.createElement('details');
+    legacy.className = 'legacy-grades';
+    legacy.innerHTML = '<summary>Anciennes notes du carnet</summary><div id="legacyGradesContent"></div>';
+    $('legacyGrades').append(legacy);
+    const holder = $('carnetContent');
+    holder.id = 'carnetContentMain';
+    $('legacyGradesContent').id = 'carnetContent';
+    renderCarnetGrades(group, term, students);
+    $('carnetContent').id = 'legacyGradesContent';
+    holder.id = 'carnetContent';
+  }
 }
 
 function renderCarnetGrades(group, term, students) {

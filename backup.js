@@ -182,7 +182,7 @@ async function makeSnapshot() {
   await CarnetStore.flush();
   const date = new Date();
   const snapshot = {format: BACKUP_FORMAT, version: 1, created: date.toISOString(),
-    classes: JSON.parse(JSON.stringify(classes)), home: homeAppearance(), assets: []};
+    classes: JSON.parse(JSON.stringify(classes)), home: homeAppearance(), modules: JSON.parse(JSON.stringify(carnetModules || {})), assets: []};
   const references = new Map();
   for (const layout of backupLayouts(snapshot.classes)) {
     if (layout.reference) references.set(layout.reference.id, layout.reference.type);
@@ -263,7 +263,12 @@ function parseBackup(text) {
     if (!asset || asset.blob.type !== layout.reference.type) throw Error('Il manque un barème dans cette sauvegarde.');
     layout.reference.id = asset.id;
   }
-  return {classes: data.classes, home: data.home, assets, created: data.created};
+  const modules = data.modules && typeof data.modules === 'object' && !Array.isArray(data.modules) ? data.modules : {};
+  for (const group of data.classes) {
+    if (group.classeur !== undefined && (!group.classeur || typeof group.classeur !== 'object' || Array.isArray(group.classeur) ||
+        (group.classeur.tables !== undefined && !Array.isArray(group.classeur.tables)))) throw Error('Les évaluations du fichier sont invalides.');
+  }
+  return {classes: data.classes, home: data.home, modules, assets, created: data.created};
 }
 
 async function decryptWithPhrase(bytes) {
@@ -303,6 +308,7 @@ async function restoreBackup(data) {
   try {
     CarnetStore.set('classes', JSON.stringify(data.classes));
     CarnetStore.set('home', JSON.stringify(data.home));
+    CarnetStore.set('modules', JSON.stringify(data.modules || {}));
     await CarnetStore.flush();
   } catch {
     if (data.assets.size) {
@@ -316,6 +322,7 @@ async function restoreBackup(data) {
   }
   classes = data.classes;
   homeSettings = data.home;
+  carnetModules = data.modules || {};
   canReadStorage = true;
   assignClassColors();
 }
@@ -340,6 +347,12 @@ function renderBackup() {
       <p>Le fichier restauré remplace le carnet de cet appareil. Sauvegarde d’abord le carnet actuel si tu souhaites en garder une copie. Les anciennes sauvegardes non chiffrées (.json) restent lisibles.</p>
       <button id="importBackup" type="button">Choisir une sauvegarde</button>
       <input id="backupInput" type="file" hidden>
+    </div>
+    <div class="card backup-card">
+      <h2>Importer Mon Classeur Prof</h2>
+      <p>Récupère les évaluations, groupes, bilans et remarques d’une sauvegarde du classeur (menu Options → Faire une sauvegarde). Les classes et les élèves sont associés par leur nom ; un rapport s’affiche avant l’import.</p>
+      <button id="importClasseur" type="button">Choisir une sauvegarde du classeur</button>
+      <input id="classeurInput" type="file" accept=".json,application/json" hidden>
     </div>
     <div class="card backup-card" id="cloudCard">
       <h2>Carnet en ligne</h2>
@@ -374,7 +387,7 @@ function renderBackup() {
   const downloadButton = $('downloadBackup');
   const restore = $('importBackup');
   const cloudFeedback = $('cloudFeedback');
-  const BUTTONS = ['exportBackup', 'shareBackup', 'downloadBackup', 'importBackup', 'cloudPush', 'cloudPull', 'cloudCode', 'phraseChange', 'cloudDelete', 'wipeDevice'];
+  const BUTTONS = ['importClasseur', 'exportBackup', 'shareBackup', 'downloadBackup', 'importBackup', 'cloudPush', 'cloudPull', 'cloudCode', 'phraseChange', 'cloudDelete', 'wipeDevice'];
   let pending;
   function report(message) {
     feedback.hidden = false;
@@ -455,6 +468,35 @@ function renderBackup() {
       notify('Sauvegarde restaurée.');
     } catch (error) { report(error.message || 'Impossible de restaurer la sauvegarde.'); }
     finally { busy(false); }
+  };
+
+  // Import du classeur
+  $('importClasseur').onclick = () => $('classeurInput').click();
+  $('classeurInput').onchange = async () => {
+    const input = $('classeurInput');
+    const file = input.files[0];
+    input.value = '';
+    if (!file || backupBusy) return;
+    busy(true);
+    try {
+      if (!canReadStorage) throw Error('Le carnet de cet appareil n’a pas pu être lu.');
+      const source = ClasseurImport.parse(await file.text());
+      const result = ClasseurImport.plan(source, classes);
+      if (!confirm(`Importer cette sauvegarde du classeur ?\n\n${ClasseurImport.summary(result)}\n\nFais d’abord une sauvegarde du carnet si tu veux pouvoir revenir en arrière.`)) return;
+      const before = classes;
+      classes = result.groups;
+      if (!save()) { classes = before; throw Error('Enregistrement impossible.'); }
+      const current = carnetModules.classeur || {};
+      carnetModules = {...carnetModules, classeur: {...current, year: current.year || result.settings.year,
+        settings: {...result.settings.settings, ...(current.settings || {})}}};
+      CarnetStore.set('modules', JSON.stringify(carnetModules));
+      await CarnetStore.flush();
+      assignClassColors();
+      location.hash = '#classes';
+      notify('Classeur importé.');
+    } catch (error) {
+      report(error.message || 'Import impossible.');
+    } finally { busy(false); }
   };
 
   // Carnet en ligne

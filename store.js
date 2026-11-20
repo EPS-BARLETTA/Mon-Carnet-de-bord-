@@ -7,6 +7,7 @@ const CarnetStore = (() => {
   const DB_STORE = 'donnees';
   const LEGACY_CLASSES = 'mon-carnet-eps-v1';
   const LEGACY_HOME = 'mon-carnet-eps-accueil';
+  const LEGACY_MODULES = 'mon-carnet-eps-modules';
   const WRITE_DELAY = 150;
   let backend = 'indexeddb';
   let pending = {};
@@ -42,7 +43,7 @@ const CarnetStore = (() => {
   function readAll() {
     return transaction('readonly', store => {
       const values = {};
-      for (const key of ['classes', 'home']) {
+      for (const key of ['classes', 'home', 'modules']) {
         const request = store.get(key);
         request.onsuccess = () => { values[key] = request.result; };
       }
@@ -84,12 +85,14 @@ const CarnetStore = (() => {
         values = check;
       }
       navigator.storage?.persist?.().catch(() => {});
-      return {classes: values.classes ?? '[]', home: values.home ?? '{}'};
+      return {classes: values.classes ?? '[]', home: values.home ?? '{}', modules: values.modules ?? '{}'};
     } catch {
       // Navigateur sans IndexedDB utilisable : on garde l'ancien fonctionnement.
       backend = 'localstorage';
       const old = legacy();
-      return {classes: old.classes ?? '[]', home: old.home ?? '{}'};
+      let modulesValue = '{}';
+      try { modulesValue = localStorage.getItem(LEGACY_MODULES) ?? '{}'; } catch {}
+      return {classes: old.classes ?? '[]', home: old.home ?? '{}', modules: modulesValue};
     }
   }
 
@@ -102,7 +105,7 @@ const CarnetStore = (() => {
     const job = writing.then(async () => {
       if (backend === 'localstorage') {
         for (const [key, value] of Object.entries(values)) {
-          localStorage.setItem(key === 'classes' ? LEGACY_CLASSES : LEGACY_HOME, value);
+          localStorage.setItem(key === 'classes' ? LEGACY_CLASSES : key === 'home' ? LEGACY_HOME : LEGACY_MODULES, value);
         }
       } else {
         await writeAll(values);

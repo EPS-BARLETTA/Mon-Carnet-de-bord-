@@ -43,6 +43,7 @@ const cover = content.innerHTML;
 let classes = [];
 let canReadStorage = true;
 let homeSettings = {};
+let carnetModules = {};
 let carnetReady = false;
 
 function loadCarnet(stored) {
@@ -61,6 +62,10 @@ function loadCarnet(stored) {
   }
   try { homeSettings = JSON.parse(stored.home || '{}') || {}; }
   catch { homeSettings = {}; }
+  try {
+    carnetModules = JSON.parse(stored.modules || '{}') || {};
+    if (typeof carnetModules !== 'object' || Array.isArray(carnetModules)) carnetModules = {};
+  } catch { carnetModules = {}; }
   assignClassColors();
 }
 try { localStorage.removeItem('mon-carnet-eps-pronote-direct'); } catch {}

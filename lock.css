@@ -28,4 +28,5 @@ html.carnet-locked body > *:not(#carnetLock) { visibility: hidden; }
 .carnet-lock-error { min-height: 1.4em; margin: 0; color: #ffb4b4; font-weight: 600; }
 .carnet-lock-forgot { text-align: left; color: #c9d4e2; }
 .carnet-lock-forgot summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
-.carnet-lock-wipe { width: 100%; background: transparent !important; color: #ffb4b4; border: 1px solid #ffb4b4 !important; }
+.carnet-lock-forgot > div { display: grid; gap: 10px; }
+.carnet-lock .carnet-lock-phrase { font-size: 18px; letter-spacing: normal; text-align: left; min-height: 48px; }

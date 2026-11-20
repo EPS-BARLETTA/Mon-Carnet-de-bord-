@@ -6,6 +6,7 @@
 const CarnetLock = (() => {
   const KEY = 'mon-carnet-eps-verrou';
   const AWAY_KEY = 'mon-carnet-eps-verrou-absence';
+  const PHRASE_KEY = 'mon-carnet-eps-phrase'; // empreinte de la phrase secrète (voir backup.js)
   const ITERATIONS = 150000;
   let unlocked = false;
   let failures = 0;
@@ -63,13 +64,38 @@ const CarnetLock = (() => {
         <button type="submit" class="carnet-lock-ok">Déverrouiller</button>
         <p id="carnetLockError" class="carnet-lock-error" role="alert"></p>
         <details class="carnet-lock-forgot"><summary>Code oublié ?</summary>
-          <p>Efface le carnet de cet appareil, puis récupère-le depuis le cloud ou une sauvegarde avec ta phrase secrète.</p>
-          <button type="button" id="carnetLockWipe" class="carnet-lock-wipe">Effacer le carnet de cet appareil</button>
+          <div>
+            <p>Saisis ta phrase secrète (celle du cloud) : le verrouillage sera retiré. Rien n’est effacé.</p>
+            <label for="carnetLockPhrase">Phrase secrète</label>
+            <input id="carnetLockPhrase" class="carnet-lock-phrase" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+            <button type="button" id="carnetLockPhraseOk" class="carnet-lock-ok">Retirer le verrouillage</button>
+          </div>
         </details>
       </form>
     </div>`);
     screen = document.getElementById('carnetLock');
     return screen;
+  }
+
+  async function checkPhrase(value) {
+    const accessKey = await CarnetCrypto.accessKey(value);
+    const code = await CarnetCrypto.accessCode(accessKey);
+    let known = null;
+    try { known = localStorage.getItem(PHRASE_KEY); } catch {}
+    if (known) return code === known;
+    let response;
+    try {
+      response = await fetch('/api/carnet', {cache: 'no-store', headers: {Authorization: `Bearer ${accessKey}`}});
+    } catch {
+      throw Error('Pas de connexion : la phrase se vérifie en ligne sur cet appareil. Connecte-toi puis réessaie.');
+    }
+    if (response.status === 401) return false;
+    const body = (response.headers.get('content-type') || '').includes('application/json') ? await response.json().catch(() => null) : null;
+    if (body && (response.ok || (response.status === 404 && body.vide))) {
+      try { localStorage.setItem(PHRASE_KEY, code); } catch {}
+      return true;
+    }
+    throw Error('Vérification impossible pour le moment. Réessaie plus tard.');
   }
 
   function show() {
@@ -112,12 +138,34 @@ const CarnetLock = (() => {
       error.textContent = 'Code incorrect.';
       code.focus();
     };
-    document.getElementById('carnetLockWipe').onclick = async () => {
-      if (!confirm('Effacer tout le carnet de cet appareil ? Tu pourras le récupérer depuis le cloud ou une sauvegarde avec ta phrase secrète.')) return;
-      await CarnetStore.wipe();
-      try { localStorage.removeItem(KEY); } catch {}
-      location.replace(location.pathname.replace(/classeur\/.*$/, '') + '#sauvegarde');
-      location.reload();
+    // Code oublié : la phrase secrète retire le verrouillage. Rien n'est jamais effacé.
+    // Vérifiée sur l'appareil si son empreinte y est enregistrée, sinon auprès du cloud.
+    screen.querySelector('.carnet-lock-forgot').open = false;
+    const phrase = document.getElementById('carnetLockPhrase');
+    phrase.value = '';
+    document.getElementById('carnetLockPhraseOk').onclick = async () => {
+      if (Date.now() < blockedUntil) {
+        error.textContent = `Trop d’essais. Réessaie dans ${Math.ceil((blockedUntil - Date.now()) / 1000)} s.`;
+        return;
+      }
+      const value = phrase.value;
+      if (!value) return phrase.focus();
+      if (typeof CarnetCrypto === 'undefined') { error.textContent = 'Recharge la page puis réessaie.'; return; }
+      error.textContent = 'Vérification…';
+      let ok;
+      try { ok = await checkPhrase(value); }
+      catch (problem) { error.textContent = problem.message; return; }
+      if (ok) {
+        failures = 0;
+        disable();
+        hide();
+        alert('Verrouillage retiré. Choisis un nouveau code dans Sauvegarde → Verrouillage de l’app.');
+        return;
+      }
+      failures++;
+      if (failures >= 5) blockedUntil = Date.now() + 30000 * (failures - 4);
+      phrase.value = '';
+      error.textContent = 'Ce n’est pas ta phrase secrète.';
     };
     if (settings.faceId) face.focus();
     else code.focus();

@@ -57,7 +57,8 @@ const PPPanel = (() => {
     const count = Object.keys(store(group, term)).length;
     let html = `<div class="pp-head"><h3>Bulletin PRONOTE</h3><div class="actions">
       ${locked ? '' : `<button type="button" class="pp-import">Importer des bulletins (PDF)</button>`}
-      ${bulletin && !locked ? `<button type="button" class="pp-ia">${bulletin.ia ? 'Relancer l’analyse IA' : 'Analyse approfondie (IA)'}</button>` : ''}
+      ${bulletin ? '<button type="button" class="pp-copy-ia">Copier pour une IA (anonymisé)</button>' : ''}
+      ${bulletin && !locked ? '<button type="button" class="pp-paste-ia">Coller la réponse de l’IA</button>' : ''}
       </div><input type="file" class="pp-file" accept="application/pdf,.pdf" multiple hidden></div>
       <p class="muted pp-status" role="status">${message ? esc(message) : count ? `${count} bulletin${count > 1 ? 's' : ''} importé${count > 1 ? 's' : ''} pour ce trimestre.` : 'Importe le PDF des bulletins de la classe (ou d’un élève) exporté depuis PRONOTE. Il est lu dans l’appareil.'}</p>`;
     if (!bulletin) {
@@ -84,7 +85,7 @@ const PPPanel = (() => {
         return rows.join('');
       }).join('')}</tbody></table></div>
       <p class="muted pp-legend"><mark class="pp-pos">positif</mark> <mark class="pp-neg">négatif</mark> <span class="pp-fix"><u>faute</u> <span class="pp-corr">(correction)</span></span>
-        ${ia ? ` · Analyse IA du ${esc(new Date(ia.date).toLocaleDateString('fr-FR'))}` : ' · Analyse faite dans l’appareil'}</p>
+        ${ia ? ` · Analyse IA du ${esc(new Date(ia.date).toLocaleDateString('fr-FR'))} <button type="button" class="link-button pp-ia-clear">Revenir à l’analyse de l’appareil</button>` : ' · Analyse faite dans l’appareil'}</p>
       <div class="pp-synthesis">
         <div><h4>Points forts</h4><ul>${(ia?.points_forts || result.forts).map(item => `<li>${esc(item)}</li>`).join('') || '<li class="muted">—</li>'}</ul></div>
         <div><h4>Points à travailler</h4><ul>${(ia?.points_faibles || result.faibles).map(item => `<li>${esc(item)}</li>`).join('') || '<li class="muted">—</li>'}</ul></div>
@@ -110,7 +111,7 @@ const PPPanel = (() => {
     if (context.locked) return '';
     const examples = carnetModules.pp?.examples || '';
     return `<details class="pp-examples"><summary>Mes exemples de remarques (pour l’analyse IA)</summary>
-      <p class="muted">Colle quelques remarques que tu as écrites, <strong>sans les prénoms</strong> : l’IA s’en inspire pour le ton et la structure. Elles restent dans ton carnet chiffré et ne sont envoyées qu’avec une analyse IA.</p>
+      <p class="muted">Colle quelques remarques que tu as écrites : l’IA s’en inspire pour le ton et la structure. Les prénoms en tête de chaque remarque sont retirés automatiquement quand tu copies un bulletin pour une IA. Elles restent dans ton carnet chiffré.</p>
       <textarea class="pp-examples-text" rows="6" maxlength="20000">${esc(examples)}</textarea>
       <button type="button" class="pp-examples-save">Enregistrer les exemples</button></details>`;
   }
@@ -139,19 +140,26 @@ const PPPanel = (() => {
     container.querySelector('.pp-remark-ia')?.addEventListener('click', () => {
       context.onRemark(String(bulletin.ia.remarque).replaceAll('[Prénom]', PPAnalyse.firstName(student.name)));
     });
+    container.querySelector('.pp-ia-clear')?.addEventListener('click', () => {
+      const {ia, ...rest} = bulletin;
+      saveBulletin(context, student.id, rest);
+      render(container, context);
+    });
     container.querySelector('.pp-check')?.addEventListener('click', event => context.onMention(event.target.dataset.mention));
-    container.querySelector('.pp-ia')?.addEventListener('click', async event => {
-      const button = event.target;
-      button.disabled = true;
-      status.textContent = 'Analyse en cours (données anonymisées)…';
+    container.querySelector('.pp-copy-ia')?.addEventListener('click', async () => {
+      const text = PPIA.prompt(bulletin, store(group, previousTerm(term))[student.id] || null, student.name);
       try {
-        const answer = await PPIA.analyse(bulletin, store(group, previousTerm(term))[student.id] || null, student.name);
-        saveBulletin(context, student.id, {...bulletin, ia: {...answer, date: new Date().toISOString()}});
-        render(container, context);
-      } catch (error) {
-        status.textContent = error.message || 'L’analyse n’a pas abouti.';
-        button.disabled = false;
+        await navigator.clipboard.writeText(text);
+        status.textContent = 'Bulletin anonymisé copié, avec les consignes. Colle-le dans ton IA, puis recolle sa réponse ici.';
+      } catch {
+        status.textContent = 'Copie impossible sur cet appareil.';
       }
+    });
+    container.querySelector('.pp-paste-ia')?.addEventListener('click', () => {
+      PPIA.askAnswer(answer => {
+        saveBulletin(context, student.id, {...bulletin, ia: {...answer, date: new Date().toISOString()}});
+        render(container, context, 'Réponse de l’IA enregistrée.');
+      });
     });
     container.querySelector('.pp-examples-save')?.addEventListener('click', () => {
       const text = container.querySelector('.pp-examples-text').value.trim();
@@ -201,7 +209,8 @@ const PPPanel = (() => {
   return {render, resetVariant() { variant = 0; }};
 })();
 
-// Analyse approfondie : le bulletin est anonymisé dans l'appareil avant l'envoi.
+// Analyse par une IA de ton choix : le bulletin est anonymisé dans l'appareil, copié avec les consignes,
+// puis la réponse de l'IA est recollée dans le carnet. Rien n'est envoyé automatiquement.
 const PPIA = (() => {
   const strip = value => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
   const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -259,32 +268,81 @@ const PPIA = (() => {
     };
   }
 
-  async function analyse(bulletin, previous, name) {
-    let key = null;
-    try { key = localStorage.getItem('mon-carnet-eps-cle-cloud'); } catch {}
-    if (!key) {
-      if (typeof askPhrase === 'function' && await askPhrase()) {
-        try { key = localStorage.getItem('mon-carnet-eps-cle-cloud'); } catch {}
-      }
-      if (!key) throw Error('Saisis d’abord ta phrase secrète (page Sauvegarde) pour utiliser l’analyse IA.');
-    }
-    let response;
-    try {
-      response = await fetch('./api/analyse', {
-        method: 'POST',
-        cache: 'no-store',
-        headers: {'Content-Type': 'application/json', Authorization: `Bearer ${key}`},
-        body: JSON.stringify(payload(bulletin, previous, name)),
-      });
-    } catch {
-      throw Error('Connexion impossible. Vérifie le réseau.');
-    }
-    const json = (response.headers.get('content-type') || '').includes('application/json');
-    if (!json) throw Error('L’analyse IA n’existe que sur la version Vercel du carnet.');
-    const body = await response.json();
-    if (!response.ok) throw Error(body.message || 'L’analyse n’a pas abouti.');
-    return body;
+  const INSTRUCTIONS = `Tu aides un professeur principal de collège ou lycée français à préparer le conseil de classe.
+On te donne le bulletin ANONYMISÉ d'un élève (désigné par [Prénom]) : pour chaque matière, la moyenne de l'élève, celle de la classe et l'appréciation de l'enseignant ; la vie scolaire ; parfois les moyennes du trimestre précédent ; parfois des exemples de remarques écrites par ce professeur principal.
+
+Réponds UNIQUEMENT par un objet JSON valide, sans texte autour, de la forme :
+{
+  "matieres": [{"matiere": "nom exact donné", "positif": ["extrait"], "negatif": ["extrait"], "corrections": [{"erreur": "extrait", "correction": "texte corrigé"}]}],
+  "points_forts": ["phrase courte"],
+  "points_faibles": ["phrase courte"],
+  "remarque": "proposition de remarque de professeur principal",
+  "mention": "felicitations" | "encouragements" | "aucune",
+  "justification": "une phrase qui explique la mention proposée"
+}
+
+Règles :
+- « positif » et « negatif » : courts extraits (2 à 8 mots) recopiés EXACTEMENT, caractère pour caractère, depuis l'appréciation de la matière ; positif = qualité, réussite, progrès ; negatif = difficulté, manque, attitude à corriger.
+- « corrections » : uniquement les vraies fautes d'orthographe, de grammaire ou d'accord dans les appréciations ; « erreur » est recopiée EXACTEMENT (quelques mots autour de la faute) ; « correction » est la même portion corrigée. N'invente pas de faute, ne corrige pas le style.
+- Points forts et faibles : synthèse de l'ensemble du bulletin (matières, attitude, travail, vie scolaire, évolution), 2 à 5 éléments chacun, sans répéter les notes.
+- Remarque : 300 à 600 caractères, en français soigné, dans le ton et la structure des exemples du professeur s'il y en a (bilan d'ensemble, évolution, points à travailler précis en nommant les matières, encouragement final). Utilise [Prénom] pour désigner l'élève. Ne cite aucun enseignant. N'invente aucune information absente du bulletin. N'écris pas la mention dans la remarque.
+- Mention : félicitations pour un excellent bilan sans réserve ; encouragements pour un bilan satisfaisant porté par les efforts ou les progrès ; sinon aucune.`;
+
+  // Texte prêt à coller dans une IA : consignes + bulletin anonymisé (aucun nom).
+  function prompt(bulletin, previous, name) {
+    return `${INSTRUCTIONS}\n\nVoici le bulletin anonymisé (format JSON) :\n${JSON.stringify(payload(bulletin, previous, name), null, 1)}`;
   }
 
-  return {analyse, payload, anonymizer};
+  function extract(text) {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start < 0 || end < start) throw Error('Je ne trouve pas de réponse au format attendu. Colle toute la réponse de l’IA.');
+    const data = JSON.parse(text.slice(start, end + 1));
+    if (!data || typeof data !== 'object' || (!Array.isArray(data.matieres) && !data.remarque)) throw Error('La réponse ne correspond pas au format demandé.');
+    const list = value => Array.isArray(value) ? value.filter(item => typeof item === 'string').slice(0, 12) : [];
+    return {
+      matieres: (Array.isArray(data.matieres) ? data.matieres : []).filter(item => item && typeof item.matiere === 'string').map(item => ({
+        matiere: item.matiere, positif: list(item.positif), negatif: list(item.negatif),
+        corrections: (Array.isArray(item.corrections) ? item.corrections : []).filter(fix => fix && typeof fix.erreur === 'string' && typeof fix.correction === 'string').slice(0, 12),
+      })),
+      points_forts: list(data.points_forts), points_faibles: list(data.points_faibles),
+      remarque: typeof data.remarque === 'string' ? data.remarque.slice(0, 2000) : '',
+      mention: ['felicitations', 'encouragements'].includes(data.mention) ? data.mention : 'aucune',
+      justification: typeof data.justification === 'string' ? data.justification.slice(0, 300) : '',
+    };
+  }
+
+  function askAnswer(done) {
+    let dialog = document.getElementById('ppAnswerDialog');
+    if (!dialog) {
+      document.body.insertAdjacentHTML('beforeend', `<dialog id="ppAnswerDialog" aria-labelledby="ppAnswerTitle"><form method="dialog" class="pp-answer">
+        <h2 id="ppAnswerTitle">Réponse de l’IA</h2>
+        <p class="muted">Colle ici toute la réponse de l’IA (elle commence par une accolade « { »).</p>
+        <textarea id="ppAnswerText" rows="10"></textarea>
+        <p id="ppAnswerError" class="phrase-error" role="alert" hidden></p>
+        <div class="actions"><button type="button" id="ppAnswerCancel">Annuler</button><button class="primary" id="ppAnswerOk" type="submit">Enregistrer</button></div>
+      </form></dialog>`);
+      dialog = document.getElementById('ppAnswerDialog');
+    }
+    const area = document.getElementById('ppAnswerText');
+    const error = document.getElementById('ppAnswerError');
+    area.value = '';
+    error.hidden = true;
+    document.getElementById('ppAnswerCancel').onclick = () => dialog.close();
+    dialog.querySelector('form').onsubmit = event => {
+      event.preventDefault();
+      try {
+        const answer = extract(area.value);
+        dialog.close();
+        done(answer);
+      } catch (problem) {
+        error.textContent = problem.message || 'Réponse illisible.';
+        error.hidden = false;
+      }
+    };
+    dialog.showModal();
+    area.focus();
+  }
+
+  return {payload, anonymizer, prompt, extract, askAnswer};
 })();

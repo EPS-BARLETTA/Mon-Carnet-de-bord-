@@ -164,3 +164,5 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .pp-examples { margin-top: 14px; }
 .pp-examples summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 .pp-examples textarea { width: 100%; }
+.pp-answer textarea { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
+.link-button { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; min-height: 0; }

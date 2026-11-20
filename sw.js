@@ -1,4 +1,4 @@
-const CACHE = 'mon-carnet-eps-v35';
+const CACHE = 'mon-carnet-eps-v36';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './app.js', './app.css', './board.js', './board.css', './capture.js', './session.js', './carnet.js', './carnet.css',
   './store.js', './classeur-import.js', './classeur/', './classeur/index.html', './classeur/bridge.js', './classeur/notes.js', './classeur/assets/app.js', './classeur/assets/app.css', './classeur/assets/referentiel.js', './classeur/assets/ccf.js', './classeur/assets/icon.svg', './crypto.js', './cloud.js', './backup.js', './bulletins.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',
@@ -6,6 +6,7 @@ const ASSETS = [
   './fonds/cabines.webp', './fonds/glacier.webp', './fonds/telepherique.webp',
   './fonds/el-capitan.webp', './fonds/verdon.webp', './fonds/fontainebleau.webp', './fonds/credits.html',
   './fonds/vtt-dh.webp', './fonds/recif-tropical.webp',
+  './fonds/cervin.webp', './fonds/dolomites.webp', './fonds/escalade-voie.webp', './fonds/escalade-bloc.webp',
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

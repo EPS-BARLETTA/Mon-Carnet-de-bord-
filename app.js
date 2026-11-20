@@ -15,6 +15,10 @@ const BUILTIN_PHOTOS = {
   'fond:el-capitan': ['Escalade · El Capitan — Yosemite', './fonds/el-capitan.webp'],
   'fond:verdon': ['Escalade · Gorges du Verdon', './fonds/verdon.webp'],
   'fond:fontainebleau': ['Escalade · Blocs de Fontainebleau', './fonds/fontainebleau.webp'],
+  'fond:cervin': ['Montagne · Le Cervin et son reflet', './fonds/cervin.webp'],
+  'fond:dolomites': ['Montagne · Les Dolomites au coucher du soleil', './fonds/dolomites.webp'],
+  'fond:escalade-voie': ['Escalade difficulté · En voie à Kalymnos', './fonds/escalade-voie.webp'],
+  'fond:escalade-bloc': ['Escalade bloc · En action à Fontainebleau', './fonds/escalade-bloc.webp'],
   'fond:vtt-dh': ['VTT · Descente (DH)', './fonds/vtt-dh.webp'],
   'fond:poissons': ['Poissons · Coraux tropicaux', './fonds/recif-tropical.webp'],
 };

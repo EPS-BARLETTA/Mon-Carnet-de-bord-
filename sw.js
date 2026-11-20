@@ -1,4 +1,4 @@
-const CACHE = 'mon-carnet-eps-v50';
+const CACHE = 'mon-carnet-eps-v51';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest', './app.js', './app.css', './board.js', './board.css', './capture.js', './session.js', './carnet.js', './carnet.css',
   './store.js', './lock.js', './lock.css', './classeur-import.js', './pp/bulletin.js', './pp/analyse.js', './pp/ui.js', './pp/vendor/pdf.min.mjs', './pp/vendor/pdf.worker.min.mjs', './pp/vendor/pdf.worker.mjs', './pp/vendor/polyfills.mjs', './classeur/', './classeur/index.html', './classeur/bridge.js', './classeur/notes.js', './classeur/assets/app.js', './classeur/assets/app.css', './classeur/assets/referentiel.js', './classeur/assets/ccf.js', './classeur/assets/icon.svg', './crypto.js', './cloud.js', './backup.js', './bulletins.js', './portraits.js', './ocr/client/tesseract.min.js', './ocr/client/worker.min.js',

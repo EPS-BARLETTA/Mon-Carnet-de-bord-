@@ -9,9 +9,9 @@ const today = () => new Date().toISOString().slice(0, 10);
 const STORAGE_KEY = 'mon-carnet-eps-v1';
 const HOME_KEY = 'mon-carnet-eps-accueil';
 const BUILTIN_PHOTOS = {
-  'fond:cabines': ['Cabines jaunes et orange', './fonds/cabines.webp'],
+  'fond:cabines': ['Cabines de La Grave', './fonds/cabines.webp?v=2'],
   'fond:glacier': ['Glacier sous le ciel bleu', './fonds/glacier.webp'],
-  'fond:telepherique': ['Téléphérique dans les Alpes', './fonds/telepherique.webp'],
+  'fond:telepherique': ['Téléphérique du Jandri', './fonds/telepherique.webp?v=2'],
   'fond:el-capitan': ['Escalade · El Capitan — Yosemite', './fonds/el-capitan.webp'],
   'fond:verdon': ['Escalade · Gorges du Verdon', './fonds/verdon.webp'],
   'fond:fontainebleau': ['Escalade · Blocs de Fontainebleau', './fonds/fontainebleau.webp'],
@@ -567,6 +567,7 @@ function renderMenu() {
     <nav class="home-actions" aria-label="Options de l’accueil">
       <a class="action" href="#creer">Créer une classe</a>
       <a class="action" href="#personnaliser">Personnaliser</a>
+      <a class="action" href="https://eps-barletta.github.io/EPS-BARLETTA-mes-outils/index.html" target="_blank" rel="noopener">EPS BARLETTA - MES OUTILS</a>
     </nav>
   </section>`;
 }

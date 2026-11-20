@@ -166,3 +166,9 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .pp-examples textarea { width: 100%; }
 .pp-answer textarea { width: 100%; font-family: ui-monospace, monospace; font-size: 13px; }
 .link-button { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; min-height: 0; }
+/* Onglet Prof principal : seul à droite, avec son propre style */
+.carnet-sections .pp-tab { margin-left: auto; background: #14293e; border-color: #14293e; color: #fff; font-weight: 750; letter-spacing: .01em; box-shadow: 0 2px 6px rgb(20 41 62 / 25%); }
+.carnet-sections .pp-tab span { color: #f5c400; }
+.carnet-sections .pp-tab:hover { background: #1e3a57; }
+.carnet-sections .pp-tab[aria-current="page"] { background: #f5c400; border-color: #d9ad00; color: #14293e; }
+.carnet-sections .pp-tab[aria-current="page"] span { color: #14293e; }

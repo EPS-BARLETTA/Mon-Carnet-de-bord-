@@ -121,8 +121,8 @@ function renderCarnet(group, tab, term) {
       <a href="${root}/notes/${term}" ${tab === 'notes' ? 'aria-current="page"' : ''}>Évaluations</a>
       <a href="${root}/bulletins/${term}" ${tab === 'bulletins' ? 'aria-current="page"' : ''}>Bulletins</a>
       <a href="${root}/trombinoscope/${term}" ${tab === 'trombinoscope' ? 'aria-current="page"' : ''}>Trombinoscope</a>
-      ${group.principal === true ? `<a href="${root}/conseil/${term}" ${tab === 'conseil' ? 'aria-current="page"' : ''}>Prof principal</a>` : ''}
       <a href="${root}/tableau-blanc/${term}">Tableau blanc</a>
+      ${group.principal === true ? `<a class="pp-tab" href="${root}/conseil/${term}" ${tab === 'conseil' ? 'aria-current="page"' : ''}><span aria-hidden="true">★</span> Prof principal</a>` : ''}
     </nav>
     ${locked && tab !== 'trombinoscope' ? '<p class="carnet-term-notice">Trimestre verrouillé · Lecture seule</p>' : ''}
     <div id="carnetContent"></div>

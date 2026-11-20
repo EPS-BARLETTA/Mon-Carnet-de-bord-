@@ -586,7 +586,13 @@ function renderClassForm(group) {
         <input type="file" id="pictureInput" accept="image/png,image/jpeg,.png,.jpg,.jpeg" hidden>
         <p class="muted">Choisis une capture PRONOTE en JPG ou PNG, avec les photos et les noms visibles. Les portraits restent sur l’appareil.</p>
       </div>
-      ${group ? '<h2>Liste des élèves</h2><ul id="rosterPreview" class="roster-preview"></ul>' : ''}
+      ${group ? `<h2>Liste des élèves</h2>
+        <ul id="rosterPreview" class="roster-preview editable-roster"></ul>
+        <p id="rosterEmpty" class="muted" hidden>Aucun élève dans la liste active.</p>
+        <details id="withdrawnRoster" hidden>
+          <summary id="withdrawnRosterTitle">Élèves retirés</summary>
+          <ul id="withdrawnRosterList" class="roster-preview editable-roster"></ul>
+        </details>` : ''}
       <label for="manualNames">${group ? 'Ajouter des élèves à la liste' : 'Saisir les élèves à la main'}</label>
       <textarea id="manualNames" rows="4" placeholder="Un nom et un prénom par ligne"></textarea>
       <button class="${group ? 'primary' : ''}" type="submit">${group ? 'Enregistrer' : 'Créer la classe'}</button>
@@ -619,22 +625,45 @@ function renderClassForm(group) {
 
   name.oninput = () => name.setCustomValidity('');
 
-  function paintRoster() {
-    const list = $('rosterPreview');
-    if (!list) return;
-    list.replaceChildren(...group.students.map(student => {
-      const item = document.createElement('li');
-      item.append(RosterPortraits.photo(student.portrait), document.createTextNode(student.name));
-      return item;
-    }));
+  function rosterRow(student, withdrawn) {
+    const item = document.createElement('li');
+    const label = document.createElement('span');
+    label.textContent = student.name;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = withdrawn ? '' : 'danger';
+    button.textContent = withdrawn ? 'Réintégrer' : 'Retirer';
+    button.setAttribute('aria-label', `${button.textContent} ${student.name}`);
+    button.onclick = () => {
+      if (!withdrawn && !confirm(`Retirer « ${student.name} » de la liste active ? Ses appels, notes et bulletins seront conservés. Tu pourras réintégrer cet élève si besoin.`)) return;
+      const removed = withdrawnStudents();
+      const students = withdrawn ? [...group.students, student] : group.students.filter(item => item.id !== student.id);
+      const withdrawnRoster = withdrawn ? removed.filter(item => item.id !== student.id) : [...removed, student];
+      if (!persistClass({...group, students, withdrawnStudents: withdrawnRoster})) return;
+      paintRoster();
+      notify(withdrawn ? 'Élève réintégré dans la classe.' : 'Élève retiré de la liste active.');
+    };
+    item.append(RosterPortraits.photo(student.portrait), label, button);
+    return item;
   }
 
-  function saveRoster(students, reportError) {
+  function withdrawnStudents() {
+    return Array.isArray(group?.withdrawnStudents) ? group.withdrawnStudents : [];
+  }
+
+  function paintRoster() {
+    if (!group) return;
+    const byName = (a, b) => a.name.localeCompare(b.name, 'fr');
+    const removed = [...withdrawnStudents()].sort(byName);
+    $('rosterPreview').replaceChildren(...[...group.students].sort(byName).map(student => rosterRow(student, false)));
+    $('rosterEmpty').hidden = group.students.length > 0;
+    $('withdrawnRoster').hidden = !removed.length;
+    $('withdrawnRosterTitle').textContent = `Élèves retirés (${removed.length})`;
+    $('withdrawnRosterList').replaceChildren(...removed.map(student => rosterRow(student, true)));
+  }
+
+  function persistClass(updated, reportError) {
     const previous = classes;
-    const updated = {...group, id: group?.id || uid(), name: name.value.trim(),
-      color: appearanceColor($('classColor').value), colorAssigned: true, students,
-      banner: photo.value(), principal: $('classPrincipal').checked,
-      boards: group?.boards || [{id: 'principal', name: 'Tableau principal'}]};
     classes = group ? classes.map(c => c.id === group.id ? updated : c) : [...classes, updated];
     if (!save(reportError)) {
       classes = previous;
@@ -643,6 +672,13 @@ function renderClassForm(group) {
     if (group) Object.assign(group, updated);
     else location.hash = classRoute(updated);
     return true;
+  }
+
+  function saveRoster(students, reportError) {
+    return persistClass({...group, id: group?.id || uid(), name: name.value.trim(),
+      color: appearanceColor($('classColor').value), colorAssigned: true, students,
+      banner: photo.value(), principal: $('classPrincipal').checked,
+      boards: group?.boards || [{id: 'principal', name: 'Tableau principal'}]}, reportError);
   }
 
   $('importPortraits').onclick = () => { if (validName()) file.click(); };

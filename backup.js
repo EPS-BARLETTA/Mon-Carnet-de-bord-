@@ -5,6 +5,8 @@ const BACKUP_WEEK_KEY = 'mon-carnet-eps-derniere-sauvegarde';
 const PHRASE_CODE_KEY = 'mon-carnet-eps-phrase';
 const CLOUD_STATE_KEY = 'mon-carnet-eps-cloud';
 const PHRASE_MIN = 10;
+const CLOUD_KEY_KEY = 'mon-carnet-eps-cle-cloud';
+const CLOUD_ACTION_KEY = 'mon-carnet-eps-action-cloud';
 let backupBusy = false;
 let sessionPhrase = null;
 
@@ -45,7 +47,64 @@ function setCloudState(next) {
 }
 
 function markCarnetChanged() {
-  if (!cloudState.dirty) setCloudState({dirty: true});
+  if (!cloudState.dirty) {
+    setCloudState({dirty: true});
+    updateCloudReminder();
+  }
+}
+
+// ---------- Rappels du cloud : version plus récente en ligne, modifications non envoyées ----------
+
+let cloudNewer = null;
+let lastCloudCheck = 0;
+
+function cloudConfigured() {
+  try { return Boolean(localStorage.getItem(CLOUD_KEY_KEY) || localStorage.getItem(PHRASE_CODE_KEY)); }
+  catch { return false; }
+}
+
+function updateCloudReminder() {
+  let bar = $('cloudReminder');
+  if (!bar) {
+    bar = document.createElement('aside');
+    bar.id = 'cloudReminder';
+    bar.className = 'backup-reminder cloud-reminder';
+    bar.hidden = true;
+    ($('backupReminder') || document.body.firstElementChild).after(bar);
+  }
+  const onBackupPage = location.hash === '#sauvegarde';
+  if (cloudNewer && !onBackupPage) {
+    bar.innerHTML = `<span>☁️ Une version plus récente est en ligne (envoyée ${esc(frenchDate(cloudNewer.created))} depuis ${esc(cloudNewer.appareil || 'un autre appareil')}).${cloudState.dirty ? ' Cet appareil a aussi des modifications non envoyées.' : ''}</span>
+      <a href="#sauvegarde" data-cloud-action="pull">Récupérer</a>`;
+    bar.hidden = false;
+  } else if (cloudState.dirty && cloudConfigured() && !onBackupPage) {
+    bar.innerHTML = '<span>☁️ Des modifications ne sont pas encore envoyées vers le cloud.</span><a href="#sauvegarde" data-cloud-action="push">Envoyer</a>';
+    bar.hidden = false;
+  } else {
+    bar.hidden = true;
+  }
+  bar.onclick = event => {
+    const action = event.target.closest('[data-cloud-action]')?.dataset.cloudAction;
+    if (action) {
+      try { sessionStorage.setItem(CLOUD_ACTION_KEY, action); } catch {}
+    }
+  };
+}
+
+async function checkCloud(force = false) {
+  if (!navigator.onLine || (!force && Date.now() - lastCloudCheck < 60000)) return updateCloudReminder();
+  let key = null;
+  try { key = localStorage.getItem(CLOUD_KEY_KEY); } catch {}
+  if (!key) return updateCloudReminder();
+  lastCloudCheck = Date.now();
+  if (!CarnetCloud.unlocked) CarnetCloud.unlock(key);
+  try {
+    const manifest = await CarnetCloud.info();
+    cloudNewer = manifest && manifest.version !== cloudState.version ? manifest : null;
+  } catch {
+    cloudNewer = null;
+  }
+  updateCloudReminder();
 }
 
 function frenchDate(iso) {
@@ -153,13 +212,19 @@ async function askPhrase() {
   }
   sessionPhrase = phrase;
   CarnetCloud.unlock(accessKey);
+  try { localStorage.setItem(CLOUD_KEY_KEY, accessKey); } catch {}
   return phrase;
 }
 
 function forgetPhrase() {
   sessionPhrase = null;
   CarnetCloud.lock();
-  try { localStorage.removeItem(PHRASE_CODE_KEY); } catch {}
+  try {
+    localStorage.removeItem(PHRASE_CODE_KEY);
+    localStorage.removeItem(CLOUD_KEY_KEY);
+  } catch {}
+  cloudNewer = null;
+  updateCloudReminder();
 }
 
 // ---------- Création et lecture des sauvegardes ----------
@@ -549,6 +614,8 @@ function renderBackup() {
         manifest = await CarnetCloud.push(bytes, {base: cloudState.version, force: true, progress});
       }
       setCloudState({version: manifest.version, created: manifest.created, dirty: false});
+      cloudNewer = null;
+      updateCloudReminder();
       cloudReport(`Carnet envoyé (${megabytes(manifest.size)} chiffrés).`);
       $('cloudStatus').textContent = describeCloud(manifest);
     } catch (error) {
@@ -579,6 +646,8 @@ function renderBackup() {
       }
       await restoreBackup(data);
       setCloudState({version: manifest.version, created: manifest.created, dirty: false});
+      cloudNewer = null;
+      updateCloudReminder();
       location.hash = '#accueil';
       notify('Carnet récupéré depuis le cloud.');
     } catch (error) {
@@ -658,10 +727,23 @@ function renderBackup() {
   };
 
   updateBackupReminder();
+  updateCloudReminder();
   refreshCloud().catch(() => {});
+  let requested = null;
+  try {
+    requested = sessionStorage.getItem(CLOUD_ACTION_KEY);
+    sessionStorage.removeItem(CLOUD_ACTION_KEY);
+  } catch {}
+  if (requested === 'pull') $('cloudPull').click();
+  if (requested === 'push') $('cloudPush').click();
 }
 
 window.addEventListener('pageshow', updateBackupReminder);
+window.addEventListener('hashchange', () => updateCloudReminder());
+window.addEventListener('online', () => checkCloud(true));
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) updateBackupReminder();
+  if (!document.hidden) {
+    updateBackupReminder();
+    checkCloud();
+  }
 });

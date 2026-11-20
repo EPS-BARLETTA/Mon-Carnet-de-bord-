@@ -358,7 +358,7 @@ function bilanPage(){
   return '<tr><td>'+esc(s.name)+'</td>'+cells+'<td><b data-bilan-computed="'+esc(s.id)+'">'+(m===null?"–":fr(m))+'</b></td><td><input class="input note-input" type="number" inputmode="decimal" min="0" max="20" step=".01" data-bilan-override="'+esc(s.id)+'" value="'+esc(b.overrides[s.id]??"")+'" placeholder="'+(m===null?"":esc(fr(m)))+'" aria-label="Moyenne retenue de '+esc(s.name)+'"></td></tr>';
  }).join("")+'</tbody></table></div>';
  if(!on)return html;
- html+='<div class="section-head"><h2>Appréciations pour le bulletin</h2><div class="row">'+btn("Proposer pour les appréciations vides","bilan-propose-all","primary")+btn("Effacer toutes les appréciations","bilan-clear-all","danger")+'</div></div>';
+ html+='<div class="section-head"><h2>Appréciations pour le bulletin</h2><div class="row">'+btn("Proposer pour les appréciations vides","bilan-propose-all","primary")+btn("Copie élève par élève","bilan-copy-step","")+btn("Tout copier","bilan-copy-all","")+btn("Effacer toutes les appréciations","bilan-clear-all","danger")+'</div></div>';
  html+='<p class="muted small-text bilan-help">Coche au besoin un ou deux repères, puis « Reformuler » : chaque appui donne une autre appréciation. Le texte reste modifiable ; « Effacer » vide la case.</p>';
  html+='<section class="sheet remark-card remark-class"><div class="remark-head"><strong>Appréciation générale de la classe</strong></div><div class="remark-tags">'+CLASS_TAGS.map(([k,l])=>tagBtn("class",k,l,b.classTags.includes(k))).join("")+'</div><textarea class="input remark-text" data-bilan-class-remark="1" rows="3" placeholder="Appréciation de la classe…" aria-label="Appréciation générale de la classe">'+esc(b.classRemark)+'</textarea><div class="remark-foot"><span class="muted small-text" data-count="class">'+countLabel(b.classRemark)+'</span><div class="row">'+btn("Effacer","bilan-clear:class","small quiet")+btn("Copier","bilan-copy:class","small quiet")+btn("Reformuler","bilan-propose:class","small")+'</div></div></section>';
  html+='<div class="remark-list">'+students.map(s=>{
@@ -368,6 +368,28 @@ function bilanPage(){
  }).join("")+'</div>';
  return html;
 }
+/* Copie élève par élève pour PRONOTE : chaque appui copie l'appréciation de l'élève affiché, puis passe au suivant. */
+const copyStep={
+ index:0,
+ bar(){let el=document.getElementById("copyStep");if(!el){el=document.createElement("div");el.id="copyStep";el.className="copy-step";el.setAttribute("role","region");el.setAttribute("aria-label","Copie élève par élève");document.body.append(el)}return el},
+ list(){const c=cls();const b=bilanOf(c,bilanTri());return c.students.map(s=>({s,text:(b.remarks[s.id]||"").trim()}))},
+ open(){this.index=0;this.done=null;this.draw()},
+ close(){document.getElementById("copyStep")?.remove()},
+ draw(){
+  const items=this.list();if(!items.length){this.close();return}
+  this.index=Math.max(0,Math.min(this.index,items.length-1));
+  const it=items[this.index];
+  this.bar().innerHTML='<div class="copy-step-info"><span class="muted small-text">'+(this.done?"✓ "+esc(this.done)+" copiée · ":"")+"Élève "+(this.index+1)+" / "+items.length+'</span><strong>'+face(it.s,"sm")+esc(it.s.name)+'</strong><span class="copy-step-text">'+(it.text?esc(it.text):'<em class="muted">Pas d’appréciation</em>')+'</span></div><div class="copy-step-actions"><button type="button" class="btn small quiet" data-step="prev" aria-label="Élève précédent">←</button><button type="button" class="btn primary" data-step="copy"'+(it.text?"":" disabled")+'>Copier</button><button type="button" class="btn small quiet" data-step="next" aria-label="Élève suivant">→</button><button type="button" class="btn small quiet" data-step="close">Fermer</button></div>';
+  this.bar().onclick=e=>{const a=e.target.closest("[data-step]")?.dataset.step;if(!a)return;if(a==="close")this.close();if(a==="prev"){this.index--;this.done=null;this.draw()}if(a==="next"){this.index++;this.done=null;this.draw()}if(a==="copy")this.copy()};
+ },
+ async copy(){
+  const items=this.list(),it=items[this.index];if(!it?.text)return;
+  try{await navigator.clipboard.writeText(it.text)}catch{toast("Copie impossible : sélectionne le texte puis copie-le.");return}
+  this.done=it.s.name;
+  if(this.index<items.length-1)this.index++;else toast("Dernier élève : toutes les appréciations sont passées.");
+  this.draw();
+ }
+};
 /* Mise à jour ciblée pendant la saisie : le clavier reste ouvert sur iPad. */
 function refreshBilan(){
  const c=cls();if(!c||view.page!=="bilan")return;const tri=bilanTri();
@@ -1137,6 +1159,15 @@ const actions={
   [...c.students].sort(byName).forEach(s=>{if((b.remarks[s.id]||"").trim())return;const text=studentProposal(c,tri,s);lastProposal[s.id]=text;b.remarks[s.id]=text;n++});
   save();render();toast(n?plural(n,"appréciation")+" "+(n>1?"proposées":"proposée")+". Relis-les avant de les copier.":"Toutes les appréciations sont déjà écrites.");
  },
+ async "bilan-copy-all"(){
+  const c=cls(),b=bilanOf(c,bilanTri());
+  const parts=[];
+  if(b.classRemark.trim())parts.push("Appréciation de la classe\n"+b.classRemark.trim());
+  for(const s of c.students){const r=(b.remarks[s.id]||"").trim();if(r)parts.push(s.name+"\n"+r)}
+  if(!parts.length){toast("Aucune appréciation à copier.");return}
+  try{await navigator.clipboard.writeText(parts.join("\n\n"));toast(parts.length+" appréciation"+(parts.length>1?"s":"")+" copiée"+(parts.length>1?"s":"")+".")}catch{toast("Copie impossible sur cet appareil.")}
+ },
+ "bilan-copy-step"(){copyStep.open()},
  async "bilan-copy"(target){
   const b=bilanOf(cls(),bilanTri()),text=target==="class"?b.classRemark:b.remarks[target]||"";
   if(!text.trim()){toast("Rien à copier.");return}

@@ -830,6 +830,7 @@ CarnetStore.load().then(stored => {
   loadCarnet(stored);
   carnetReady = true;
   render();
+  checkCloud(true);
 });
 
 if ('serviceWorker' in navigator && location.protocol === 'https:') {

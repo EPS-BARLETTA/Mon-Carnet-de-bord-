@@ -602,11 +602,36 @@ function renderClassForm(group) {
       <textarea id="manualNames" rows="4" placeholder="Un nom et un prénom par ligne"></textarea>
       <button class="${group ? 'primary' : ''}" type="submit">${group ? 'Enregistrer' : 'Créer la classe'}</button>
     </form>
+    ${group && classes.length > 1 ? `<div class="card merge-card">
+      <h2>Fusionner une classe en double</h2>
+      <p class="muted">Rapatrie dans « ${esc(group.name)} » les évaluations, le bilan et les remarques d’une autre classe (par exemple une classe créée en double par l’import du classeur). Les élèves sont associés par leur nom, puis la classe en double est supprimée.</p>
+      <label for="mergeSource">Classe en double</label>
+      <select id="mergeSource">${classes.filter(item => item.id !== group.id).map(item => `<option value="${esc(item.id)}">${esc(item.name)} (${item.students.length} élève${item.students.length === 1 ? '' : 's'})</option>`).join('')}</select>
+      <button id="mergeClass" type="button">Fusionner dans ${esc(group.name)}</button>
+    </div>` : ''}
     ${group ? `<div class="actions"><button id="deleteClass" class="danger" type="button">Supprimer cette classe</button></div>` : ''}
   </section>`;
   const name = $('className');
   const file = $('pictureInput');
   const photo = photoPicker('classBanner', group?.banner, 800);
+
+  if (group && $('mergeClass')) {
+    $('mergeClass').onclick = () => {
+      const source = classes.find(item => item.id === $('mergeSource').value);
+      if (!source) return;
+      const result = ClasseurImport.mergePlan(group, source, classes);
+      const warning = result.lost.length ? `\n\nAttention : ${result.lost.join(', ')} de « ${source.name} » ne seront pas repris.` : '';
+      if (!confirm(`Fusionner « ${source.name} » dans « ${group.name} » ?\n\n${ClasseurImport.summary(result)}${warning}\n\n« ${source.name} » sera ensuite supprimée.`)) return;
+      const previous = classes;
+      classes = result.groups;
+      if (!save()) {
+        classes = previous;
+        return;
+      }
+      notify(`« ${source.name} » fusionnée dans « ${group.name} ».`);
+      render();
+    };
+  }
 
   if (group) {
     $('deleteClass').onclick = () => {

@@ -248,3 +248,6 @@ input[type="checkbox"] { min-height: 0; width: 22px; height: 22px; flex: none; a
 .cloud-setup summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 .cloud-setup hr { border: 0; border-top: 1px solid var(--line); margin: 12px 0; }
 .cloud-code { display: inline-block; max-width: 100%; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all; background: #f1f4f2; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+.merge-card { margin-top: 18px; }
+.merge-card h2 { margin-top: 0; }
+.merge-card select { display: block; margin: 6px 0 12px; }

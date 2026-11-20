@@ -49,7 +49,7 @@ function renderBulletins(group, term, students, principal) {
     </div>
     <div id="bulletinIdentity" class="carnet-student bulletin-identity" aria-live="polite"></div>
     <form id="bulletinForm">
-      ${principal ? '' : '<div id="bulletinSummary" class="bulletin-summary"></div>'}
+      ${principal ? '<section id="ppPanel" class="pp-panel" aria-label="Bulletin PRONOTE et analyse"></section>' : '<div id="bulletinSummary" class="bulletin-summary"></div>'}
       <label for="bulletinRemark">${principal ? 'Appréciation générale' : 'Appréciation EPS'}</label>
       <textarea id="bulletinRemark" rows="5" maxlength="6000" ${locked ? 'readonly' : ''}></textarea>
       ${principal ? `<fieldset class="bulletin-mentions" ${locked ? 'disabled' : ''}><legend>Mentions</legend>
@@ -107,6 +107,20 @@ function renderBulletins(group, term, students, principal) {
     if (principal) {
       memo.value = current.memo;
       for (const check of checks) check.checked = current.mentions.includes(check.value);
+      PPPanel.resetVariant();
+      PPPanel.render($('ppPanel'), {group, term, student, locked: carnetTermLocked(group, term),
+        onRemark(text) {
+          if (remark.value.trim() && remark.value.trim() !== text && !confirm('Remplacer l’appréciation déjà écrite par la proposition ?')) return;
+          remark.value = text;
+          copy.disabled = !text.trim();
+          commit();
+          remark.focus();
+        },
+        onMention(key) {
+          for (const check of checks) check.checked = check.value === key ? true : check.checked;
+          commit();
+          status.textContent = 'Mention cochée.';
+        }});
       if (reading) showReading(current);
     }
     status.textContent = '';

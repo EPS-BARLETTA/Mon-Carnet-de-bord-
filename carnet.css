@@ -130,3 +130,37 @@
 .bulletin-summary { margin: 8px 0 14px; padding: 12px 14px; border-radius: 10px; background: #f3f6f4; }
 .bulletin-summary p { margin: 0 0 4px; }
 .bulletin-notes { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+/* Espace professeur principal : bulletin PRONOTE et analyse */
+.pp-panel { margin: 0 0 18px; padding: 14px 16px; border-radius: 12px; background: #f6f8fb; border: 1px solid #dfe5ec; }
+.pp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.pp-head h3 { margin: 0; }
+.pp-head .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-summary { margin: 10px 0; line-height: 1.6; }
+.pp-table-wrap { overflow-x: auto; }
+.pp-table { width: 100%; border-collapse: collapse; font-size: 15px; background: #fff; }
+.pp-table th, .pp-table td { border-bottom: 1px solid #e3e8ee; padding: 8px 10px; text-align: left; vertical-align: top; }
+.pp-table thead th { font-size: 13px; color: #55657a; background: #eef2f6; }
+.pp-table tbody th { white-space: nowrap; font-weight: 600; }
+.pp-table tbody th small { display: block; font-weight: 600; }
+.pp-table td:nth-child(2), .pp-table td:nth-child(3) { white-space: nowrap; text-align: right; }
+.pp-table tr.pp-sub td { font-size: 14px; }
+.pp-good { color: #17703f; font-weight: 700; }
+.pp-bad { color: #b42323; font-weight: 700; }
+mark.pp-pos { background: #d5f2dd; color: inherit; border-radius: 3px; padding: 0 2px; }
+mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 0 2px; }
+.pp-fix u { text-decoration: underline wavy #c62828; text-underline-offset: 3px; }
+.pp-corr { color: #c62828; font-weight: 600; }
+.pp-legend { font-size: 13px; margin: 8px 0 12px; }
+.pp-synthesis { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.pp-synthesis > div { background: #fff; border-radius: 10px; padding: 10px 14px; border: 1px solid #e3e8ee; }
+.pp-synthesis h4 { margin: 0 0 6px; }
+.pp-synthesis > div:first-child h4 { color: #17703f; }
+.pp-synthesis > div:last-child h4 { color: #b42323; }
+.pp-synthesis ul { margin: 0; padding-left: 18px; }
+.pp-propose { margin-top: 14px; }
+.pp-propose .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-mention { margin: 10px 0 0; }
+.pp-mention button { margin-left: 8px; }
+.pp-examples { margin-top: 14px; }
+.pp-examples summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.pp-examples textarea { width: 100%; }

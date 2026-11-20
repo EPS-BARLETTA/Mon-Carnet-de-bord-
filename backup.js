@@ -262,10 +262,10 @@ async function makeSnapshot() {
   return {json, date, week: backupWeek(date)};
 }
 
-async function makeBackup(encrypted) {
+async function makeBackup(encrypted, customName = '') {
   const {json, date, week} = await makeSnapshot();
   const clock = new Intl.DateTimeFormat('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'}).format(date).replace(/\D/g, '');
-  const name = `Carnet-de-bord-semaine-${week}-${carnetDay()}-${clock}`;
+  const name = customName || `Carnet-de-bord-semaine-${week}-${carnetDay()}-${clock}`;
   if (!encrypted) return {file: new File([json], `${name}.json`, {type: 'application/json'}), week};
   const phrase = await askPhrase();
   if (!phrase) return null;
@@ -443,6 +443,16 @@ function renderBackup() {
       <p id="storageStatus" class="muted"></p>
       <p>Sur un ordinateur partagé, envoie d’abord ton carnet vers le cloud, puis efface-le de l’appareil avant de partir.</p>
       <button id="wipeDevice" class="danger" type="button">Effacer le carnet de cet appareil</button>
+    </div>
+    <div class="card backup-card" id="lockCard">
+      <h2>Verrouillage de l’app</h2>
+      <p>Demande Face ID ou un code à l’ouverture, et au retour dans l’app après une absence. Utile si l’iPad reste sur le bureau. C’est une protection contre les regards indiscrets, pas un chiffrement : tes sauvegardes et le cloud restent protégés par ta phrase secrète.</p>
+      <div id="lockSettings"></div>
+    </div>
+    <div class="card backup-card">
+      <h2>Fin d’année</h2>
+      <p>Crée une archive chiffrée de toute l’année, puis prépare le carnet pour l’année suivante. Tes réglages, fonds, exemples de remarques et ta phrase secrète sont conservés.</p>
+      <button id="closeYear" type="button">Clôturer l’année…</button>
     </div>
   </section>`;
   const feedback = $('backupFeedback');
@@ -708,6 +718,9 @@ function renderBackup() {
     status.textContent = info ? `${mode} Espace utilisé : ${megabytes(info.used || 0)}${info.quota ? ` sur ${megabytes(info.quota)} disponibles` : ''}.${info.persisted ? ' Stockage protégé contre l’effacement automatique.' : ''}` : mode;
   });
 
+  renderLockSettings();
+  $('closeYear').onclick = () => openCloseYear();
+
   $('wipeDevice').onclick = async () => {
     const warning = cloudState.dirty ? '\n\nAttention : des modifications n’ont pas été envoyées vers le cloud ni sauvegardées.' : '';
     if (!confirm(`Effacer tout le carnet de cet appareil (classes, photos, notes, fiches, tableaux, phrase secrète) ?${warning}`)) return;
@@ -747,3 +760,147 @@ document.addEventListener('visibilitychange', () => {
     checkCloud();
   }
 });
+
+// ---------- Verrouillage de l'app ----------
+
+async function renderLockSettings() {
+  const box = $('lockSettings');
+  if (!box) return;
+  const settings = CarnetLock.settings;
+  const delays = [[0, 'Immédiatement'], [1, 'Après 1 minute'], [5, 'Après 5 minutes'], [15, 'Après 15 minutes'], [60, 'Après 1 heure']];
+  const options = current => delays.map(([value, label]) => `<option value="${value}" ${value === current ? 'selected' : ''}>${label}</option>`).join('');
+  if (settings) {
+    box.innerHTML = `<p><strong>Activé</strong>${settings.faceId ? ' avec Face ID' : ''} et un code.</p>
+      <label for="lockDelay">Verrouiller au retour dans l’app</label>
+      <select id="lockDelay">${options(settings.delay ?? 5)}</select>
+      <div class="actions"><button id="lockNow" type="button">Verrouiller maintenant</button><button id="lockOff" class="danger" type="button">Désactiver</button></div>
+      <p id="lockStatus" class="muted" role="status"></p>`;
+    $('lockDelay').onchange = event => { CarnetLock.setDelay(Number(event.target.value)); $('lockStatus').textContent = 'Délai enregistré.'; };
+    $('lockNow').onclick = () => CarnetLock.show();
+    $('lockOff').onclick = async () => {
+      const code = prompt('Saisis ton code actuel pour désactiver le verrouillage :');
+      if (code === null) return;
+      if (!await CarnetLock.verify(code)) { $('lockStatus').textContent = 'Code incorrect.'; return; }
+      CarnetLock.disable();
+      renderLockSettings();
+    };
+    return;
+  }
+  const face = await CarnetLock.faceIdAvailable();
+  box.innerHTML = `<label for="lockCode">Choisis un code (4 à 8 chiffres)</label>
+    <input id="lockCode" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+    <label for="lockCode2">Saisis-le une deuxième fois</label>
+    <input id="lockCode2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off">
+    ${face ? '<label class="choice-line"><input id="lockFace" type="checkbox" checked> Déverrouiller aussi avec Face ID</label>' : '<p class="muted">Face ID n’est pas disponible dans ce navigateur : le code sera demandé.</p>'}
+    <label for="lockDelay">Verrouiller au retour dans l’app</label>
+    <select id="lockDelay">${options(5)}</select>
+    <button id="lockOn" class="primary" type="button">Activer le verrouillage</button>
+    <p id="lockStatus" class="muted" role="status"></p>`;
+  $('lockOn').onclick = async () => {
+    const status = $('lockStatus');
+    if ($('lockCode').value !== $('lockCode2').value) { status.textContent = 'Les deux codes ne sont pas identiques.'; return; }
+    try {
+      await CarnetLock.enable($('lockCode').value, {faceId: Boolean($('lockFace')?.checked), delay: Number($('lockDelay').value)});
+      notify('Verrouillage activé.');
+      renderLockSettings();
+    } catch (error) {
+      status.textContent = error.name === 'NotAllowedError' ? 'Face ID a été refusé. Décoche Face ID ou réessaie.' : error.message || 'Activation impossible.';
+    }
+  };
+}
+
+// ---------- Clôturer l'année ----------
+
+function nextSchoolYear(current) {
+  const match = /(\d{4})\D+(\d{4})/.exec(current || '');
+  if (match) return `${Number(match[1]) + 1}-${Number(match[2]) + 1}`;
+  const now = new Date();
+  const start = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${start + 1}-${start + 2}`;
+}
+
+function currentSchoolYear() {
+  const saved = carnetModules.classeur?.year;
+  if (saved) return String(saved).replace(/[–—]/g, '-');
+  const now = new Date();
+  const start = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${start}-${start + 1}`;
+}
+
+// Garde la classe, ses élèves et son apparence ; vide tout ce qui concerne l'année écoulée.
+function freshClass(group) {
+  return {
+    id: group.id, name: group.name, color: group.color, colorAssigned: group.colorAssigned, banner: group.banner,
+    students: group.students, boards: [{id: 'principal', name: 'Tableau principal'}],
+  };
+}
+
+function openCloseYear() {
+  let dialog = $('closeYearDialog');
+  if (!dialog) {
+    document.body.insertAdjacentHTML('beforeend', `<dialog id="closeYearDialog" aria-labelledby="closeYearTitle"><form class="close-year">
+      <h2 id="closeYearTitle">Clôturer l’année</h2>
+      <h3>1. Archiver l’année</h3>
+      <p>L’archive chiffrée contient toutes les classes, les élèves, l’appel, les évaluations, les bilans et les fiches. Enregistre-la dans <strong>iCloud Drive → Archives</strong> et garde-la.</p>
+      <button type="button" id="closeYearArchive" class="primary">Créer l’archive</button>
+      <p id="closeYearArchiveStatus" class="muted" role="status"></p>
+      <h3>2. Préparer la nouvelle année</h3>
+      <label class="choice-line"><input type="radio" name="closeYearMode" value="keep" checked> Garder les classes et les élèves (appel, évaluations, bulletins, tableaux et fiches remis à zéro)</label>
+      <label class="choice-line"><input type="radio" name="closeYearMode" value="empty"> Repartir de zéro : supprimer toutes les classes</label>
+      <label for="closeYearLabel">Nouvelle année scolaire</label>
+      <input id="closeYearLabel" maxlength="20">
+      <label class="choice-line"><input type="checkbox" id="closeYearSaved"> J’ai enregistré l’archive de l’année dans Fichiers</label>
+      <p id="closeYearError" class="phrase-error" role="alert" hidden></p>
+      <div class="actions"><button type="button" id="closeYearCancel">Annuler</button><button type="submit" id="closeYearGo" class="danger">Clôturer l’année</button></div>
+    </form></dialog>`);
+    dialog = $('closeYearDialog');
+  }
+  const year = currentSchoolYear();
+  $('closeYearLabel').value = nextSchoolYear(year);
+  $('closeYearSaved').checked = false;
+  $('closeYearError').hidden = true;
+  $('closeYearArchiveStatus').textContent = `Année en cours : ${year}.`;
+  $('closeYearCancel').onclick = () => dialog.close();
+  $('closeYearArchive').onclick = async () => {
+    const status = $('closeYearArchiveStatus');
+    status.textContent = 'Préparation de l’archive…';
+    try {
+      const result = await makeBackup(true, `Archive-annee-${year}-${carnetDay()}`);
+      if (!result) { status.textContent = 'Archive annulée.'; return; }
+      if (typeof navigator.canShare === 'function' && navigator.canShare({files: [result.file]})) {
+        try { await navigator.share({files: [result.file]}); }
+        catch (error) {
+          if (error.name === 'AbortError') { status.textContent = 'Enregistrement annulé.'; return; }
+          download(result.file.name, result.file, result.file.type);
+        }
+      } else {
+        download(result.file.name, result.file, result.file.type);
+      }
+      status.textContent = `Archive « ${result.file.name} » créée. Vérifie qu’elle est bien dans ton dossier.`;
+    } catch (error) {
+      status.textContent = error.message || 'Archive impossible.';
+    }
+  };
+  dialog.querySelector('form').onsubmit = async event => {
+    event.preventDefault();
+    const error = $('closeYearError');
+    const fail = message => { error.textContent = message; error.hidden = false; };
+    if (!$('closeYearSaved').checked) return fail('Crée et enregistre d’abord l’archive, puis coche la case.');
+    const mode = dialog.querySelector('input[name="closeYearMode"]:checked').value;
+    const label = $('closeYearLabel').value.trim() || nextSchoolYear(year);
+    if (!confirm(mode === 'empty'
+      ? `Supprimer toutes les classes de ce carnet et commencer l’année ${label} ?`
+      : `Remettre à zéro l’appel, les évaluations, les bulletins, les tableaux et les fiches de toutes les classes pour commencer l’année ${label} ?`)) return;
+    const previous = classes;
+    classes = mode === 'empty' ? [] : classes.map(freshClass);
+    if (!save()) { classes = previous; return fail('Enregistrement impossible.'); }
+    carnetModules = {...carnetModules, classeur: {...(carnetModules.classeur || {}), year: label}};
+    CarnetStore.set('modules', JSON.stringify(carnetModules));
+    await CarnetStore.flush();
+    try { localStorage.removeItem(BACKUP_WEEK_KEY); } catch {}
+    dialog.close();
+    location.hash = mode === 'empty' ? '#creer' : '#classes';
+    notify(`Bonne année scolaire ${label} ! Pense à envoyer le carnet vers le cloud.`);
+  };
+  dialog.showModal();
+}

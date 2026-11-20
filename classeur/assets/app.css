@@ -606,3 +606,22 @@ tbody tr:nth-child(even) td{background:#fbfaf6}
 .copy-step-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;color:#3b4a5c}
 .copy-step-actions{display:flex;gap:8px;align-items:center}
 .copy-step-actions .primary{min-width:120px;min-height:48px}
+
+/* ===== Thème du carnet : mêmes couleurs, police et en-tête que le carnet ===== */
+:root{--ink:#14293e;--ink-soft:#526477;--line:#cfdad5;--line-strong:#b4c4bd;--bg:#f4f6f0;--surface:#fff;--tint:#f7f9f4;
+  --blue:#226047;--blue-dark:#1a4b37;--blue-tint:#e8f3eb;--r:12px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{background:var(--bg)}
+.topbar{background:#fff;color:var(--ink);border-bottom:1px solid var(--line);box-shadow:none}
+.topbar .brand{color:var(--ink);font-weight:780;font-size:18px}
+.topbar .brand img{display:none}
+.topbar .status{color:var(--ink-soft)}
+.topbar .btn{color:var(--ink);border-color:var(--line)}
+.topbar .btn:hover{background:var(--tint)}
+.topbar :focus-visible,.tabs :focus-visible{outline-color:#13779a}
+:focus-visible{outline:3px solid #13779a}
+.btn{border-radius:10px;font-weight:650}
+.wrap .btn.primary{box-shadow:none}
+.class-card[style*="--class-color"],.class-card[style*="--class-color"] .class-open{background:var(--class-color)}
+.class-card[style*="--class-color"] .class-open:hover{filter:brightness(.92)}
+.sheet,.class-card,.card{border-radius:14px}

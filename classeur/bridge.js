@@ -8,6 +8,12 @@
 (() => {
   const CLOUD_STATE_KEY = 'mon-carnet-eps-cloud';
   const APP_SRC = document.currentScript?.dataset.app || 'assets/app.js';
+  // Couleurs des classes du carnet (mêmes valeurs que APPEARANCE_COLORS dans app.js du carnet).
+  const COLORS = {
+    vert: ['#226047', '#e8f3eb'], bleu: ['#254e82', '#e9f1fc'], violet: ['#65428b', '#f2eafb'], terre: ['#884630', '#faeee8'],
+    ardoise: ['#425968', '#eaf0f4'], rose: ['#8a315c', '#faebf3'], turquoise: ['#17676d', '#e7f5f4'], ocre: ['#76540e', '#fbf2d9'],
+    bordeaux: ['#843446', '#faebef'], indigo: ['#414487', '#eeeeff'],
+  };
   let groups = [];
   let modules = {};
 
@@ -35,6 +41,7 @@
           folders: Array.isArray(own.folders) ? own.folders : [],
           tables: Array.isArray(own.tables) ? own.tables : [],
           bilans: own.bilans && typeof own.bilans === 'object' ? own.bilans : {},
+          carnetColor: COLORS[group.color] || COLORS.vert,
         };
       }),
     };

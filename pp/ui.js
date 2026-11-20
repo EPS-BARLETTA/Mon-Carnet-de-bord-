@@ -62,7 +62,7 @@ const PPPanel = (() => {
       </div><input type="file" class="pp-file" accept="application/pdf,.pdf" multiple hidden></div>
       <p class="muted pp-status" role="status">${message ? esc(message) : count ? `${count} bulletin${count > 1 ? 's' : ''} importé${count > 1 ? 's' : ''} pour ce trimestre.` : 'Importe le PDF des bulletins de la classe (ou d’un élève) exporté depuis PRONOTE. Il est lu dans l’appareil.'}</p>`;
     if (!bulletin) {
-      container.innerHTML = html + examplesBlock(context);
+      container.innerHTML = html;
       bind(container, context, null, null);
       return;
     }
@@ -97,7 +97,7 @@ const PPPanel = (() => {
         </div>
         ${suggestion(ia?.mention && ia.mention !== 'aucune' ? ia.mention : result.mention, ia?.justification)}
       </div>`}`;
-    container.innerHTML = html + examplesBlock(context);
+    container.innerHTML = html;
     bind(container, context, result, bulletin);
   }
 
@@ -105,15 +105,6 @@ const PPPanel = (() => {
     if (!MENTIONS[mention]) return '<p class="muted">Mention suggérée : aucune.</p>';
     return `<p class="pp-mention">Mention suggérée : <strong>${MENTIONS[mention]}</strong>${why ? ` <span class="muted">— ${esc(why)}</span>` : ''}
       <button type="button" class="pp-check" data-mention="${mention}">Cocher</button></p>`;
-  }
-
-  function examplesBlock(context) {
-    if (context.locked) return '';
-    const examples = carnetModules.pp?.examples || '';
-    return `<details class="pp-examples"><summary>Mes exemples de remarques (pour l’analyse IA)</summary>
-      <p class="muted">Colle quelques remarques que tu as écrites : l’IA s’en inspire pour le ton et la structure. Les prénoms en tête de chaque remarque sont retirés automatiquement quand tu copies un bulletin pour une IA. Elles restent dans ton carnet chiffré.</p>
-      <textarea class="pp-examples-text" rows="6" maxlength="20000">${esc(examples)}</textarea>
-      <button type="button" class="pp-examples-save">Enregistrer les exemples</button></details>`;
   }
 
   function bind(container, context, result, bulletin) {
@@ -160,13 +151,6 @@ const PPPanel = (() => {
         saveBulletin(context, student.id, {...bulletin, ia: {...answer, date: new Date().toISOString()}});
         render(container, context, 'Réponse de l’IA enregistrée.');
       });
-    });
-    container.querySelector('.pp-examples-save')?.addEventListener('click', () => {
-      const text = container.querySelector('.pp-examples-text').value.trim();
-      carnetModules = {...carnetModules, pp: {...(carnetModules.pp || {}), examples: text}};
-      CarnetStore.set('modules', JSON.stringify(carnetModules));
-      if (typeof markCarnetChanged === 'function') markCarnetChanged();
-      notify('Exemples enregistrés.');
     });
   }
 
@@ -230,28 +214,6 @@ const PPIA = (() => {
     };
   }
 
-  // Prépare les exemples : retire les lignes d'en-tête (« Prénom 15,5 notes… ») et remplace ces prénoms partout.
-  function cleanExamples(text) {
-    const lines = String(text || '').split('\n');
-    const header = /^([\p{Lu}][\p{L}'’]+(?:-[\p{Lu}][\p{L}'’]+)?)\s*(?::|\d|$|\()/u;
-    const names = new Set();
-    const kept = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      const match = header.exec(trimmed);
-      const sentence = /[.!?…]$/.test(trimmed) && trimmed.split(/\s+/).length > 5;
-      if (match && !sentence) {
-        if (!/^(Le|La|Les|Un|Une|Des|Nous|Vous|Il|Elle|Bilan|Conseil|Classe|Trimestre|FÉLICITATIONS|ENCOURAGEMENTS)$/i.test(match[1])) names.add(match[1]);
-        continue;
-      }
-      if (/^\(.*\)$/.test(trimmed)) continue;
-      kept.push(line);
-    }
-    let output = kept.join('\n');
-    for (const name of names) output = output.replace(new RegExp(`(?<![\\p{L}])${escapeRegex(name)}(?![\\p{L}])`, 'gu'), '[Prénom]');
-    return output.replace(/\n{3,}/g, '\n\n').trim().slice(0, 12000);
-  }
-
   function payload(bulletin, previous, name) {
     const hide = anonymizer(name);
     return {
@@ -264,12 +226,11 @@ const PPIA = (() => {
       })),
       vie_scolaire: bulletin.life ? {demi_journees_absence: bulletin.life.halfDays, non_justifiees: bulletin.life.unjustified, retards: bulletin.life.late} : null,
       trimestre_precedent: previous ? previous.subjects.map(subject => ({matiere: subject.name, moyenne_eleve: subject.note})) : null,
-      exemples_du_professeur: cleanExamples(carnetModules.pp?.examples || '') || null,
     };
   }
 
   const INSTRUCTIONS = `Tu aides un professeur principal de collège ou lycée français à préparer le conseil de classe.
-On te donne le bulletin ANONYMISÉ d'un élève (désigné par [Prénom]) : pour chaque matière, la moyenne de l'élève, celle de la classe et l'appréciation de l'enseignant ; la vie scolaire ; parfois les moyennes du trimestre précédent ; parfois des exemples de remarques écrites par ce professeur principal.
+On te donne le bulletin ANONYMISÉ d'un élève (désigné par [Prénom]) : pour chaque matière, la moyenne de l'élève, celle de la classe et l'appréciation de l'enseignant ; la vie scolaire ; parfois les moyennes du trimestre précédent.
 
 Réponds UNIQUEMENT par un objet JSON valide, sans texte autour, de la forme :
 {
@@ -285,7 +246,7 @@ Règles :
 - « positif » et « negatif » : courts extraits (2 à 8 mots) recopiés EXACTEMENT, caractère pour caractère, depuis l'appréciation de la matière ; positif = qualité, réussite, progrès ; negatif = difficulté, manque, attitude à corriger.
 - « corrections » : uniquement les vraies fautes d'orthographe, de grammaire ou d'accord dans les appréciations ; « erreur » est recopiée EXACTEMENT (quelques mots autour de la faute) ; « correction » est la même portion corrigée. N'invente pas de faute, ne corrige pas le style.
 - Points forts et faibles : synthèse de l'ensemble du bulletin (matières, attitude, travail, vie scolaire, évolution), 2 à 5 éléments chacun, sans répéter les notes.
-- Remarque : 300 à 600 caractères, en français soigné, dans le ton et la structure des exemples du professeur s'il y en a (bilan d'ensemble, évolution, points à travailler précis en nommant les matières, encouragement final). Utilise [Prénom] pour désigner l'élève. Ne cite aucun enseignant. N'invente aucune information absente du bulletin. N'écris pas la mention dans la remarque.
+- Remarque : 300 à 600 caractères, en français soigné, au ton bienveillant et exigeant d'un conseil de classe : une première phrase de bilan d'ensemble (« Un excellent trimestre… », « Le bilan reste mitigé… »), l'évolution par rapport au trimestre précédent si elle est connue, les qualités soulignées par les enseignants, les points à travailler en nommant précisément les matières, puis un encouragement final (« Vous en êtes largement capable. », « Poursuivez ainsi. »). Vouvoie l'élève ou parle de lui à la troisième personne. Utilise [Prénom] pour désigner l'élève. Ne cite aucun enseignant. N'invente aucune information absente du bulletin. N'écris pas la mention dans la remarque.
 - Mention : félicitations pour un excellent bilan sans réserve ; encouragements pour un bilan satisfaisant porté par les efforts ou les progrès ; sinon aucune.`;
 
   // Texte prêt à coller dans une IA : consignes + bulletin anonymisé (aucun nom).

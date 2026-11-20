@@ -10,8 +10,9 @@ const PronoteBulletin = (() => {
 
   async function library() {
     if (pdfjs) return pdfjs;
+    await import(new URL('pp/vendor/polyfills.mjs', document.baseURI).href);
     pdfjs = await import(new URL('pp/vendor/pdf.min.mjs', document.baseURI).href);
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pp/vendor/pdf.worker.min.mjs', document.baseURI).href;
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pp/vendor/pdf.worker.mjs', document.baseURI).href;
     return pdfjs;
   }
 

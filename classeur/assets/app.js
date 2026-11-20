@@ -113,7 +113,7 @@ classes(){
  const active=data.classes.filter(c=>!c.archived),archived=data.classes.filter(c=>c.archived);
  const card=c=>{
   const list=classEvals(c),rest=c.tables.length-list.length;
-  return '<article class="class-card'+(c.archived?" archived":"")+'"><button type="button" class="class-open" data-action="open-class:'+esc(c.id)+'"><span class="class-name">'+esc(c.name)+'</span><span class="class-meta">'+(/^(?:6|5|4|3)(?![0-9])/i.test(c.name.trim())?"Collège":"Lycée")+', '+plural(c.students.length,"élève")+'</span></button><div class="class-body">'+
+  return '<article class="class-card'+(c.archived?" archived":"")+'"'+(Array.isArray(c.carnetColor)&&/^#[0-9a-f]{6}$/i.test(c.carnetColor[0])?' style="--class-color:'+c.carnetColor[0]+'"':'')+'><button type="button" class="class-open" data-action="open-class:'+esc(c.id)+'"><span class="class-name">'+esc(c.name)+'</span><span class="class-meta">'+(/^(?:6|5|4|3)(?![0-9])/i.test(c.name.trim())?"Collège":"Lycée")+', '+plural(c.students.length,"élève")+'</span></button><div class="class-body">'+
   (list.length?list.map(t=>evalLink(c,t)).join(""):'<p class="muted small-text">Aucune évaluation pour l’instant.</p>')+
   (rest>0?'<button type="button" class="class-more" data-action="open-class:'+esc(c.id)+'">'+(rest>1?"Voir les "+rest+" autres":"Voir l’autre évaluation")+'</button>':"")+
   '</div><div class="class-foot">'+btn("+ Évaluation","quick-eval:"+c.id,"small quiet")+menu("Options de "+c.name,btn("Renommer","edit-class:"+c.id,"small")+btn(c.archived?"Réactiver":"Archiver la classe","archive-class:"+c.id,"small")+"")+'</div></article>';
@@ -285,6 +285,8 @@ function installNotice(){return "";
  return '<div class="notice"><p>Sur iPad, Safari peut effacer les données d’un site peu visité. Installe le classeur sur l’écran d’accueil pour les protéger.</p><div class="row">'+btn("Voir comment","install-info","small primary")+btn("Masquer","dismiss-install","small quiet")+'</div></div>';
 }
 /* Une couleur par espace : le prof sait où il est sans lire. */
+/* Couleur de la classe dans le carnet : reprise dans tout le module. */
+function classAccent(){const c=cls(),k=c&&Array.isArray(c.carnetColor)?c.carnetColor:null;if(!k||!/^#[0-9a-f]{6}$/i.test(k[0])||!/^#[0-9a-f]{6}$/i.test(k[1]))return "";return ' style="--accent:'+k[0]+';--accent-dark:'+k[0]+';--accent-tint:'+k[1]+'"'}
 function accentFor(page){
  if(page==="class"||page==="bilan")return {T1:"blue",T2:"green",T3:"purple",ccf:"orange"}[activeTrimester]||"slate";
  if(page==="terrain"||page==="students")return "green";
@@ -298,7 +300,7 @@ function render(){
  view.page=page;
  const open=[...document.querySelectorAll("details[data-keep][open]")].map(d=>d.dataset.keep);
  const pageKey=page+view.classId+view.tableId+observationStudentId+observationGroupId,y=scrollY;
- $("app").innerHTML='<div class="app"><header class="topbar"><a class="brand" href="'+esc(carnetLink())+'"><img src="assets/icon.svg" alt=""><span>← Carnet</span></a><div class="topbar-right"><span class="status" id="status"></span><details class="menu"><summary class="btn small">Options</summary><div class="menu-list">'+btn("Mes classes","classes","small")+btn("Sauvegarde du carnet","export-json","small")+btn("Stockage","storage","small")+btn("Mode admin","admin","small")+btn("Recharger (version "+APP_VERSION+")","force-update","small")+'</div></details></div></header><main class="wrap accent-'+accentFor(page)+'">'+pages[page]()+'</main></div>';
+ $("app").innerHTML='<div class="app"><header class="topbar"><a class="brand" href="'+esc(carnetLink())+'"><img src="assets/icon.svg" alt=""><span>← Carnet</span></a><div class="topbar-right"><span class="status" id="status"></span><details class="menu"><summary class="btn small">Options</summary><div class="menu-list">'+btn("Mes classes","classes","small")+btn("Sauvegarde du carnet","export-json","small")+btn("Stockage","storage","small")+btn("Mode admin","admin","small")+btn("Recharger (version "+APP_VERSION+")","force-update","small")+'</div></details></div></header><main class="wrap accent-'+accentFor(page)+'"'+classAccent()+'>'+pages[page]()+'</main></div>';
  showStatus();
  document.querySelectorAll("details[data-keep]").forEach(d=>{if(open.includes(d.dataset.keep))d.open=true});
  if(pageKey!==lastPageKey){scrollTo(0,0);lastPageKey=pageKey}else scrollTo(0,y);

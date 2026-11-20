@@ -252,3 +252,5 @@ input[type="checkbox"] { min-height: 0; width: 22px; height: 22px; flex: none; a
 .merge-card h2 { margin-top: 0; }
 .merge-card select { display: block; margin: 6px 0 12px; }
 .cloud-reminder { background: #e7f0fb; color: #183b63; }
+.close-year h3 { margin: 18px 0 6px; }
+.close-year input#closeYearLabel { display: block; margin: 6px 0 12px; }

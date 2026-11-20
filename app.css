@@ -84,22 +84,54 @@ p { line-height: 1.5; }
 .route h1 { font-size: clamp(28px, 5vw, 44px); margin: 10px 0 22px; }
 .route-head, .class-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .route-head { margin-bottom: 12px; }
-.home-heading {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
-  margin-bottom: 22px; padding: clamp(16px, 3vw, 26px); border-radius: 16px;
-  color: var(--personal-color); background: var(--personal-tint);
+.home-screen {
+  min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+  isolation: isolate; background: #14293e; color: white;
 }
-.home-heading h1, .home-heading p { margin: 0; overflow-wrap: anywhere; }
-.home-heading p { margin-top: 8px; }
+.home-screen .app-header { background: rgb(8 19 29 / 50%); border-color: rgb(255 255 255 / 24%); }
+.home-screen .app-header a { color: white; }
+.home-screen #content {
+  flex: 1; display: grid; place-items: center;
+  padding: clamp(16px, 5vw, 56px);
+  padding-bottom: max(clamp(16px, 5vw, 56px), env(safe-area-inset-bottom));
+}
+.home-backdrop {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(155deg, var(--personal-color), #14293e 75%);
+}
+.home-backdrop img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.home-backdrop::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(rgb(8 19 29 / 36%), rgb(8 19 29 / 60%) 55%, rgb(8 19 29 / 75%));
+}
+.home-menu {
+  display: grid; justify-items: center; width: min(100%, 720px); text-align: center;
+  padding-block: clamp(16px, 5vh, 44px);
+}
+.home-heading { margin-bottom: clamp(18px, 5vh, 38px); }
+.home-heading h1 {
+  font-size: clamp(29px, 5.6vw, 66px); letter-spacing: -.035em;
+  text-wrap: balance; overflow-wrap: anywhere;
+}
+.home-heading p { max-width: 36ch; margin: 10px auto 0; }
+.home-classes {
+  gap: 14px; width: min(100%, 350px); min-height: clamp(66px, 11vh, 88px);
+  background: var(--personal-tint); color: var(--personal-color);
+  border-radius: 18px; font-size: clamp(23px, 3.6vw, 34px);
+  box-shadow: 0 10px 30px rgb(8 19 29 / 26%);
+}
+.home-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 9px; }
+.home-actions .action {
+  color: white; font-size: .875rem; font-weight: 600; padding-inline: 10px;
+  text-decoration: underline; text-underline-offset: .18em;
+}
 .photo-banner { position: relative; isolation: isolate; overflow: hidden; }
 .banner-photo {
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   opacity: .17; z-index: -1; pointer-events: none;
 }
-.home-heading:has(.banner-photo) { min-height: 168px; }
 .choice-line { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .choice-line input { min-height: auto; width: 19px; height: 19px; flex: none; accent-color: var(--accent); }
-.home-settings { background: #fff; border: 1px solid var(--line); }
 .class-tile h2, .personalized-class .carnet-head h1 { color: var(--personal-color); overflow-wrap: anywhere; }
 .personalized-class .carnet-head {
   border-inline-start: 5px solid var(--personal-color);
@@ -131,7 +163,7 @@ p { line-height: 1.5; }
 .personalized-class .carnet-head:has(.banner-photo) > a:focus-visible {
   outline: 2px solid white; outline-offset: 3px;
 }
-.menu-grid, .class-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(240px,100%),1fr)); gap: 16px; }
+.class-grid { display: grid; }
 .menu-card {
   display: block;
   text-decoration: none;
@@ -143,7 +175,6 @@ p { line-height: 1.5; }
 .menu-card:hover { border-color: var(--accent); }
 .menu-card h2 { font-size: clamp(20px, 3vw, 28px); }
 .menu-card p { margin: 10px 0 0; color: var(--quiet); }
-.menu-icon { display: grid; place-items: center; width: 46px; height: 46px; background: #e0edd8; color: #214e39; border-radius: 12px; font-size: 27px; margin-bottom: 14px; }
 .class-form { max-width: 710px; }
 .back-link { display: inline-block; margin-bottom: 8px; }
 .card { background: white; border: 1px solid var(--line); border-radius: 17px; padding: 15px; }

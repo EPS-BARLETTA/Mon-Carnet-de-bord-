@@ -15,6 +15,9 @@ const BUILTIN_PHOTOS = {
   'fond:el-capitan': ['Escalade · El Capitan — Yosemite', './fonds/el-capitan.webp'],
   'fond:verdon': ['Escalade · Gorges du Verdon', './fonds/verdon.webp'],
   'fond:fontainebleau': ['Escalade · Blocs de Fontainebleau', './fonds/fontainebleau.webp'],
+  'fond:vtt-dh': ['VTT · Descente (DH)', './fonds/vtt-dh.webp'],
+  'fond:vtt-xc': ['VTT · Cross-country (XC)', './fonds/vtt-xc.webp'],
+  'fond:poissons': ['Poissons · Récif corallien', './fonds/poissons.webp'],
 };
 const APPEARANCE_COLORS = {
   vert: ['Vert', '#226047', '#e8f3eb'],
@@ -191,7 +194,7 @@ function photoFields(prefix, label) {
       ${Object.entries(BUILTIN_PHOTOS).map(([id, [name]]) => `<option value="${id}">${name}</option>`).join('')}
       <option value="custom" hidden>Photo personnelle</option>
     </select>
-    <small><a href="./fonds/credits.html" target="_blank" rel="noopener">Crédits des photos d’escalade</a></small>
+    <small><a href="./fonds/credits.html" target="_blank" rel="noopener">Crédits des photos intégrées</a></small>
     <label for="${prefix}Photo">Importer une photo personnelle</label>
     <input id="${prefix}Photo" type="file" accept="image/*">
     <img id="${prefix}PhotoPreview" class="home-photo-preview" alt="Aperçu" hidden>
@@ -542,16 +545,18 @@ function renderOpenBoards(group, boards, session = null, hidden = []) {
 
 function renderMenu() {
   const home = homeAppearance();
-  content.innerHTML = `<section class="route home-menu" style="${appearanceStyle(home.color)}">
-    <header class="home-heading photo-banner">
-      ${bannerPhoto(home.menuPhoto)}
-      <div><h1>${esc(home.title)}</h1>${home.intro ? `<p>${esc(home.intro)}</p>` : ''}</div>
-      <a class="action home-settings" href="#personnaliser">Personnaliser l’accueil</a>
+  const photo = appearancePhotoSource(home.menuPhoto);
+  content.innerHTML = `<section class="home-menu" style="${appearanceStyle(home.color)}">
+    <div class="home-backdrop" aria-hidden="true">${photo ? `<img src="${photo}" alt="">` : ''}</div>
+    <header class="home-heading">
+      <h1>${esc(home.title)}</h1>
+      ${home.intro ? `<p>${esc(home.intro)}</p>` : ''}
     </header>
-    <div class="menu-grid">
-      <a class="menu-card" href="#classes"><span class="menu-icon" aria-hidden="true">▦</span><h2>Mes classes</h2><p>Retrouve tes classes et leurs tableaux.</p></a>
-      <a class="menu-card" href="#creer"><span class="menu-icon" aria-hidden="true">+</span><h2>Créer une classe</h2><p>Importe un trombinoscope PRONOTE ou saisis une liste.</p></a>
-    </div>
+    <a class="action home-classes" href="#classes">Mes classes <span aria-hidden="true">→</span></a>
+    <nav class="home-actions" aria-label="Options de l’accueil">
+      <a class="action" href="#creer">Créer une classe</a>
+      <a class="action" href="#personnaliser">Personnaliser</a>
+    </nav>
   </section>`;
 }
 
@@ -689,6 +694,7 @@ function renderClassForm(group) {
 function render() {
   if (!carnetReady) return;
   const [page, id, subpage, boardId, hiddenIds] = location.hash.slice(1).split('/');
+  document.body.classList.toggle('home-screen', page === 'accueil');
   updateBackupReminder();
   $('navHome').hidden = !page || page === 'accueil';
   const home = homeAppearance();

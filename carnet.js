@@ -338,14 +338,20 @@ function renderCarnetAttendance(group, term, students) {
     </tr></thead><tbody id="attendanceRows"></tbody></table></div>
     <div class="carnet-footer">
       <button id="finishAttendance" class="primary" type="button">Enregistrer l’appel</button>
-      ${appleMobile ? '<a class="action tool-blue" href="shortcuts://run-shortcut?name=Ouvrir%20PRONOTE">Ouvrir PRONOTE</a>' : ''}
-      <a class="action" href="https://gvs.vauban.lu/login" target="_blank" rel="noopener noreferrer">Connexion Vauban pour PRONOTE</a>
       <p id="attendanceMessage" role="status"></p>
     </div>
-    ${appleMobile ? `<details class="muted">
-      <summary>Configurer le raccourci PRONOTE</summary>
-      <p>Dans l’app Raccourcis, crée un raccourci nommé « Ouvrir PRONOTE » avec l’action « Ouvrir l’app ». Choisis PRONOTE ou Safari si ton onglet PRONOTE y est déjà ouvert.</p>
-    </details>` : ''}
+    <section id="attendanceHandoff" class="attendance-handoff" aria-labelledby="attendanceAbsentTitle" hidden>
+      <h2 id="attendanceAbsentTitle" tabindex="-1"></h2>
+      <ul id="attendanceAbsentNames"></ul>
+      <div class="carnet-footer">
+        ${appleMobile ? '<a class="action tool-blue" href="shortcuts://run-shortcut?name=Ouvrir%20PRONOTE">Ouvrir PRONOTE</a>' : ''}
+        <a class="action" href="https://gvs.vauban.lu/login" target="_blank" rel="noopener noreferrer">Connexion Vauban pour PRONOTE</a>
+      </div>
+      ${appleMobile ? `<details class="muted">
+        <summary>Configurer le raccourci PRONOTE</summary>
+        <p>Dans l’app Raccourcis, crée un raccourci nommé « Ouvrir PRONOTE » avec l’action « Ouvrir l’app ». Choisis PRONOTE ou Safari si ton onglet PRONOTE y est déjà ouvert.</p>
+      </details>` : ''}
+    </section>
   </div>
   <dialog id="excuseDialog" aria-labelledby="excuseTitle">
     <h2 id="excuseTitle"></h2>
@@ -364,6 +370,9 @@ function renderCarnetAttendance(group, term, students) {
   const dateField = $('attendanceDate');
   const history = $('attendanceHistory');
   const message = $('attendanceMessage');
+  const handoff = $('attendanceHandoff');
+  const absentTitle = $('attendanceAbsentTitle');
+  const absentNames = $('attendanceAbsentNames');
   dateField.value = carnetDay();
 
   const termDays = () => group.attendance?.[term] || {};
@@ -434,10 +443,14 @@ function renderCarnetAttendance(group, term, students) {
     history.replaceChildren(new Option('Choisir une séance', ''), ...dates.map(date => new Option(carnetDate(date), date)));
     history.value = day() ? dateField.value : '';
     const total = {present: 0, absent: 0, forgot: 0, excused: 0};
+    const absences = [];
     const rows = students.map(student => {
       const state = entry(student.id);
       const long = activeExemption(student.id);
-      if (state.absent) total.absent++;
+      if (state.absent) {
+        total.absent++;
+        absences.push(student.name);
+      }
       else {
         total.present++;
         if (state.forgot) total.forgot++;
@@ -479,6 +492,14 @@ function renderCarnetAttendance(group, term, students) {
     const count = (number, word) => `${number} ${word}${number > 1 ? 's' : ''}`;
     $('attendanceSummary').textContent = `${count(total.present, 'présent')} · ${count(total.absent, 'absent')} · Parmi les présents, ${count(total.excused, 'dispensé')} et ${count(total.forgot, 'oubli')}`;
     $('attendanceRows').replaceChildren(...rows);
+    handoff.hidden = day()?.finalized !== true;
+    absentTitle.textContent = absences.length ? `${count(absences.length, 'absent')} à signaler dans PRONOTE` : 'Aucun absent à signaler dans PRONOTE';
+    absentNames.hidden = !absences.length;
+    absentNames.replaceChildren(...absences.map(name => {
+      const item = document.createElement('li');
+      item.textContent = name;
+      return item;
+    }));
     message.textContent = day() ? '' : locked ? 'Aucun appel enregistré pour cette date.' : 'Un élève est présent par défaut. Coche les exceptions avant d’enregistrer.';
   }
 
@@ -489,6 +510,8 @@ function renderCarnetAttendance(group, term, students) {
     if (!writeDay(day()?.entries || {}, true)) return;
     paint();
     message.textContent = 'Appel enregistré dans le carnet.';
+    absentTitle.focus({preventScroll: true});
+    handoff.scrollIntoView({block: 'end'});
   };
 
   if (locked && !day()) dateField.value = Object.keys(termDays()).sort().at(-1) || dateField.value;

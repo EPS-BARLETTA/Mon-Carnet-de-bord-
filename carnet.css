@@ -77,6 +77,13 @@
 .carnet-footer { margin-top: 15px; align-items: center; }
 .carnet-footer p { flex-basis: 100%; margin: 0; }
 .carnet-footer p:empty { display: none; }
+.attendance-handoff {
+  margin-top: 14px; padding: 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: #f3f7fa; overflow-wrap: anywhere;
+}
+.attendance-handoff h2 { margin: 0; font-size: 1.05rem; }
+.attendance-handoff ul { margin: 8px 0 0; padding-inline-start: 1.25em; }
+.attendance-handoff details { margin-top: 10px; }
 .attendance-summary { margin-block: 12px; padding: 11px; background: #e5f0e8; color: #204e35; border-radius: 8px; font-weight: 700; }
 .carnet-table-wrap { overflow-x: auto; }
 .carnet-table { width: 100%; border-collapse: collapse; }

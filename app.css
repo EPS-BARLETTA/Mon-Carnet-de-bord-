@@ -228,7 +228,9 @@ dialog textarea { margin-block: 6px; }
 .class-grid { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 10px; }
 .class-directory-grid { grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 14px; }
 .class-tile {
-  border-radius: 8px; padding: 20px; min-height: 116px; border-inline-start: 5px solid var(--personal-color);
+  display: flex; align-items: center;
+  border-radius: 8px; padding: 22px; min-height: clamp(124px, 11.5vw, 136px);
+  border-inline-start: 5px solid var(--personal-color);
   background: var(--personal-tint); overflow-wrap: anywhere;
 }
 .class-tile h2 { font-size: 23px; }

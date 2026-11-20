@@ -6,6 +6,7 @@
 const CarnetLock = (() => {
   const KEY = 'mon-carnet-eps-verrou';
   const AWAY_KEY = 'mon-carnet-eps-verrou-absence';
+  const PHRASE_KEY = 'mon-carnet-eps-phrase'; // empreinte de la phrase secrète (voir backup.js)
   const ITERATIONS = 150000;
   let unlocked = false;
   let failures = 0;
@@ -63,8 +64,17 @@ const CarnetLock = (() => {
         <button type="submit" class="carnet-lock-ok">Déverrouiller</button>
         <p id="carnetLockError" class="carnet-lock-error" role="alert"></p>
         <details class="carnet-lock-forgot"><summary>Code oublié ?</summary>
-          <p>Efface le carnet de cet appareil, puis récupère-le depuis le cloud ou une sauvegarde avec ta phrase secrète.</p>
-          <button type="button" id="carnetLockWipe" class="carnet-lock-wipe">Effacer le carnet de cet appareil</button>
+          <div id="carnetLockPhraseBox">
+            <p>Saisis ta phrase secrète (celle du cloud) : le verrouillage sera retiré, ton carnet reste intact.</p>
+            <label for="carnetLockPhrase">Phrase secrète</label>
+            <input id="carnetLockPhrase" class="carnet-lock-phrase" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
+            <button type="button" id="carnetLockPhraseOk" class="carnet-lock-ok">Retirer le verrouillage</button>
+          </div>
+          <div id="carnetLockWipeBox" hidden>
+            <p>Aucune phrase secrète n’est enregistrée sur cet appareil. Dernier recours : effacer le carnet de cet appareil, puis le récupérer depuis une sauvegarde. Pour confirmer, écris EFFACER.</p>
+            <input id="carnetLockWipeWord" class="carnet-lock-phrase" autocomplete="off" autocapitalize="characters" spellcheck="false">
+            <button type="button" id="carnetLockWipe" class="carnet-lock-wipe">Effacer le carnet de cet appareil</button>
+          </div>
         </details>
       </form>
     </div>`);
@@ -112,8 +122,47 @@ const CarnetLock = (() => {
       error.textContent = 'Code incorrect.';
       code.focus();
     };
+    // Code oublié : la phrase secrète (vérifiée sur l'appareil) retire le verrouillage sans rien effacer.
+    let phraseCode = null;
+    let canUsePhrase = false;
+    const forgot = screen.querySelector('.carnet-lock-forgot');
+    forgot.open = false;
+    forgot.ontoggle = () => {
+      try { phraseCode = localStorage.getItem(PHRASE_KEY); } catch {}
+      canUsePhrase = Boolean(phraseCode && typeof CarnetCrypto !== 'undefined');
+      document.getElementById('carnetLockPhraseBox').hidden = !canUsePhrase;
+      document.getElementById('carnetLockWipeBox').hidden = canUsePhrase;
+    };
+    const phrase = document.getElementById('carnetLockPhrase');
+    phrase.value = '';
+    document.getElementById('carnetLockPhraseOk').onclick = async () => {
+      if (Date.now() < blockedUntil) {
+        error.textContent = `Trop d’essais. Réessaie dans ${Math.ceil((blockedUntil - Date.now()) / 1000)} s.`;
+        return;
+      }
+      const value = phrase.value;
+      if (!value) return phrase.focus();
+      error.textContent = 'Vérification…';
+      const ok = await CarnetCrypto.accessCode(await CarnetCrypto.accessKey(value)) === phraseCode;
+      if (ok) {
+        failures = 0;
+        disable();
+        hide();
+        alert('Verrouillage retiré. Choisis un nouveau code dans Sauvegarde → Verrouillage de l’app.');
+        return;
+      }
+      failures++;
+      if (failures >= 5) blockedUntil = Date.now() + 30000 * (failures - 4);
+      phrase.value = '';
+      error.textContent = 'Ce n’est pas ta phrase secrète.';
+    };
+    document.getElementById('carnetLockWipeWord').value = '';
     document.getElementById('carnetLockWipe').onclick = async () => {
-      if (!confirm('Effacer tout le carnet de cet appareil ? Tu pourras le récupérer depuis le cloud ou une sauvegarde avec ta phrase secrète.')) return;
+      if (canUsePhrase || document.getElementById('carnetLockWipeWord').value.trim().toUpperCase() !== 'EFFACER') {
+        error.textContent = 'Écris EFFACER pour confirmer.';
+        return;
+      }
+      if (!confirm('Effacer tout le carnet de cet appareil ? Tu pourras le récupérer depuis une sauvegarde ou le cloud.')) return;
       await CarnetStore.wipe();
       try { localStorage.removeItem(KEY); } catch {}
       location.replace(location.pathname.replace(/classeur\/.*$/, '') + '#sauvegarde');

@@ -325,6 +325,8 @@ function renderClassTrombinoscope(group, term, students) {
 
 function renderCarnetAttendance(group, term, students) {
   const locked = carnetTermLocked(group, term);
+  const appleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   $('carnetContent').innerHTML = `<div class="carnet-panel">
     <div class="carnet-controls">
       <label for="attendanceDate">Date de la séance <input id="attendanceDate" type="date" required></label>
@@ -336,9 +338,14 @@ function renderCarnetAttendance(group, term, students) {
     </tr></thead><tbody id="attendanceRows"></tbody></table></div>
     <div class="carnet-footer">
       <button id="finishAttendance" class="primary" type="button">Enregistrer l’appel</button>
-      <a class="action tool-blue" href="https://gvs.vauban.lu/login" target="_blank" rel="noopener noreferrer">Connexion Vauban pour PRONOTE</a>
+      ${appleMobile ? '<a class="action tool-blue" href="shortcuts://run-shortcut?name=Ouvrir%20PRONOTE">Ouvrir PRONOTE</a>' : ''}
+      <a class="action" href="https://gvs.vauban.lu/login" target="_blank" rel="noopener noreferrer">Connexion Vauban pour PRONOTE</a>
       <p id="attendanceMessage" role="status"></p>
     </div>
+    ${appleMobile ? `<details class="muted">
+      <summary>Configurer le raccourci PRONOTE</summary>
+      <p>Dans l’app Raccourcis, crée un raccourci nommé « Ouvrir PRONOTE » avec l’action « Ouvrir l’app ». Choisis PRONOTE ou Safari si ton onglet PRONOTE y est déjà ouvert.</p>
+    </details>` : ''}
   </div>
   <dialog id="excuseDialog" aria-labelledby="excuseTitle">
     <h2 id="excuseTitle"></h2>

@@ -64,22 +64,38 @@ const CarnetLock = (() => {
         <button type="submit" class="carnet-lock-ok">Déverrouiller</button>
         <p id="carnetLockError" class="carnet-lock-error" role="alert"></p>
         <details class="carnet-lock-forgot"><summary>Code oublié ?</summary>
-          <div id="carnetLockPhraseBox">
-            <p>Saisis ta phrase secrète (celle du cloud) : le verrouillage sera retiré, ton carnet reste intact.</p>
+          <div>
+            <p>Saisis ta phrase secrète (celle du cloud) : le verrouillage sera retiré. Rien n’est effacé.</p>
             <label for="carnetLockPhrase">Phrase secrète</label>
             <input id="carnetLockPhrase" class="carnet-lock-phrase" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false">
             <button type="button" id="carnetLockPhraseOk" class="carnet-lock-ok">Retirer le verrouillage</button>
-          </div>
-          <div id="carnetLockWipeBox" hidden>
-            <p>Aucune phrase secrète n’est enregistrée sur cet appareil. Dernier recours : effacer le carnet de cet appareil, puis le récupérer depuis une sauvegarde. Pour confirmer, écris EFFACER.</p>
-            <input id="carnetLockWipeWord" class="carnet-lock-phrase" autocomplete="off" autocapitalize="characters" spellcheck="false">
-            <button type="button" id="carnetLockWipe" class="carnet-lock-wipe">Effacer le carnet de cet appareil</button>
           </div>
         </details>
       </form>
     </div>`);
     screen = document.getElementById('carnetLock');
     return screen;
+  }
+
+  async function checkPhrase(value) {
+    const accessKey = await CarnetCrypto.accessKey(value);
+    const code = await CarnetCrypto.accessCode(accessKey);
+    let known = null;
+    try { known = localStorage.getItem(PHRASE_KEY); } catch {}
+    if (known) return code === known;
+    let response;
+    try {
+      response = await fetch('/api/carnet', {cache: 'no-store', headers: {Authorization: `Bearer ${accessKey}`}});
+    } catch {
+      throw Error('Pas de connexion : la phrase se vérifie en ligne sur cet appareil. Connecte-toi puis réessaie.');
+    }
+    if (response.status === 401) return false;
+    const body = (response.headers.get('content-type') || '').includes('application/json') ? await response.json().catch(() => null) : null;
+    if (body && (response.ok || (response.status === 404 && body.vide))) {
+      try { localStorage.setItem(PHRASE_KEY, code); } catch {}
+      return true;
+    }
+    throw Error('Vérification impossible pour le moment. Réessaie plus tard.');
   }
 
   function show() {
@@ -122,17 +138,9 @@ const CarnetLock = (() => {
       error.textContent = 'Code incorrect.';
       code.focus();
     };
-    // Code oublié : la phrase secrète (vérifiée sur l'appareil) retire le verrouillage sans rien effacer.
-    let phraseCode = null;
-    let canUsePhrase = false;
-    const forgot = screen.querySelector('.carnet-lock-forgot');
-    forgot.open = false;
-    forgot.ontoggle = () => {
-      try { phraseCode = localStorage.getItem(PHRASE_KEY); } catch {}
-      canUsePhrase = Boolean(phraseCode && typeof CarnetCrypto !== 'undefined');
-      document.getElementById('carnetLockPhraseBox').hidden = !canUsePhrase;
-      document.getElementById('carnetLockWipeBox').hidden = canUsePhrase;
-    };
+    // Code oublié : la phrase secrète retire le verrouillage. Rien n'est jamais effacé.
+    // Vérifiée sur l'appareil si son empreinte y est enregistrée, sinon auprès du cloud.
+    screen.querySelector('.carnet-lock-forgot').open = false;
     const phrase = document.getElementById('carnetLockPhrase');
     phrase.value = '';
     document.getElementById('carnetLockPhraseOk').onclick = async () => {
@@ -142,8 +150,11 @@ const CarnetLock = (() => {
       }
       const value = phrase.value;
       if (!value) return phrase.focus();
+      if (typeof CarnetCrypto === 'undefined') { error.textContent = 'Recharge la page puis réessaie.'; return; }
       error.textContent = 'Vérification…';
-      const ok = await CarnetCrypto.accessCode(await CarnetCrypto.accessKey(value)) === phraseCode;
+      let ok;
+      try { ok = await checkPhrase(value); }
+      catch (problem) { error.textContent = problem.message; return; }
       if (ok) {
         failures = 0;
         disable();
@@ -155,18 +166,6 @@ const CarnetLock = (() => {
       if (failures >= 5) blockedUntil = Date.now() + 30000 * (failures - 4);
       phrase.value = '';
       error.textContent = 'Ce n’est pas ta phrase secrète.';
-    };
-    document.getElementById('carnetLockWipeWord').value = '';
-    document.getElementById('carnetLockWipe').onclick = async () => {
-      if (canUsePhrase || document.getElementById('carnetLockWipeWord').value.trim().toUpperCase() !== 'EFFACER') {
-        error.textContent = 'Écris EFFACER pour confirmer.';
-        return;
-      }
-      if (!confirm('Effacer tout le carnet de cet appareil ? Tu pourras le récupérer depuis une sauvegarde ou le cloud.')) return;
-      await CarnetStore.wipe();
-      try { localStorage.removeItem(KEY); } catch {}
-      location.replace(location.pathname.replace(/classeur\/.*$/, '') + '#sauvegarde');
-      location.reload();
     };
     if (settings.faceId) face.focus();
     else code.focus();

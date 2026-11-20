@@ -126,3 +126,7 @@
 .evaluations-list a { display: flex; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); color: inherit; text-decoration: none; min-height: 48px; align-items: center; }
 .legacy-grades { margin-top: 20px; }
 .legacy-grades summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.student-profile-mean { margin: 10px 0 4px; }
+.bulletin-summary { margin: 8px 0 14px; padding: 12px 14px; border-radius: 10px; background: #f3f6f4; }
+.bulletin-summary p { margin: 0 0 4px; }
+.bulletin-notes { display: flex; flex-wrap: wrap; gap: 6px 18px; }

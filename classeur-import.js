@@ -6,6 +6,33 @@
 const ClasseurImport = (() => {
   const nameKey = value => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
     .split(/[^a-z0-9]+/).filter(Boolean).sort().join(' ');
+  // Confusions fréquentes de la lecture des captures PRONOTE : I, l et 1 ; O et 0.
+  const looseKey = value => nameKey(value).replace(/[l1]/g, 'i').replace(/0/g, 'o');
+  function distance(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return 2;
+    const row = Array.from({length: b.length + 1}, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let previous = row[0];
+      row[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const kept = row[j];
+        row[j] = Math.min(row[j] + 1, row[j - 1] + 1, previous + (a[i - 1] === b[j - 1] ? 0 : 1));
+        previous = kept;
+      }
+    }
+    return row[b.length];
+  }
+  // Même élève : nom identique, ou à une confusion de lecture près, ou à une lettre près (si un seul candidat).
+  function findStudent(candidates, name) {
+    const exact = candidates.find(candidate => nameKey(candidate.name) === nameKey(name));
+    if (exact) return exact;
+    const loose = candidates.filter(candidate => looseKey(candidate.name) === looseKey(name));
+    if (loose.length === 1) return loose[0];
+    const key = looseKey(name);
+    if (key.replace(/ /g, '').length < 6) return null;
+    const near = candidates.filter(candidate => distance(looseKey(candidate.name), key) <= 1);
+    return near.length === 1 ? near[0] : null;
+  }
   const classKey = value => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   const record = value => value && typeof value === 'object' && !Array.isArray(value);
   const text = value => typeof value === 'string' ? value : '';
@@ -79,7 +106,7 @@ const ClasseurImport = (() => {
       group.students = Array.isArray(group.students) ? group.students : [];
       const everyone = [...group.students, ...(group.withdrawnStudents || [])];
       for (const student of item.students.filter(entry => record(entry) && text(entry.name).trim())) {
-        const match = everyone.find(candidate => nameKey(candidate.name) === nameKey(student.name));
+        const match = findStudent(everyone, student.name);
         if (match) {
           map.set(student.id, match.id);
           if (!match.sex && (student.sex === 'F' || student.sex === 'M')) match.sex = student.sex;
@@ -128,5 +155,5 @@ const ClasseurImport = (() => {
     return lines.join('\n\n');
   }
 
-  return {parse, plan, summary, nameKey, classKey};
+  return {parse, plan, summary, nameKey, classKey, findStudent};
 })();

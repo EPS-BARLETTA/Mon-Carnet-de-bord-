@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14263d">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Évaluations · Mon Carnet de bord EPS</title>
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="assets/app.css?v=c2">
+</head>
+<body>
+<div id="app"><p style="padding:24px;font-family:system-ui">Ouverture des évaluations…</p></div>
+<div id="modalhost"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<input id="import" type="file" accept=".json,application/json" hidden>
+<input id="csv-import" type="file" accept=".csv,text/csv,text/plain" hidden>
+<noscript>Les évaluations ont besoin de JavaScript pour fonctionner.</noscript>
+<script src="../store.js?v=2"></script>
+<script src="assets/referentiel.js?v=c2"></script>
+<script src="assets/ccf.js?v=c2"></script>
+<script src="bridge.js?v=c2" data-app="assets/app.js?v=c2"></script>
+</body>
+</html>

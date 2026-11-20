@@ -12,12 +12,22 @@ function bulletinEntry(group, term, studentId) {
   const entry = group.bulletins?.[term]?.[studentId];
   const text = key => typeof entry?.[key] === 'string' ? entry[key] : '';
   const mentions = Array.isArray(entry?.mentions) ? entry.mentions : [];
+  const shared = typeof ClasseurNotes === 'object' ? ClasseurNotes.remark(group, term, studentId) : null;
   return {
-    eps: text('eps'),
+    eps: shared ?? text('eps'),
     conseil: text('conseil'),
     memo: text('memo'),
     mentions: BULLETIN_MENTIONS.map(([key]) => key).filter(key => mentions.includes(key)),
   };
+}
+
+function bulletinNotesSummary(group, term, studentId) {
+  const info = ClasseurNotes.student(group, term, studentId);
+  if (!info.rows.length) return '<p class="muted">Aucune évaluation ce trimestre.</p>';
+  const rows = info.rows.map(row => `<span>${esc(row.name)} <strong>${row.statusLabel ? esc(row.statusLabel) : ClasseurNotes.format(row.note)}</strong></span>`).join('');
+  const tags = info.tags.map(tag => ClasseurNotes.TAGS[tag]).filter(Boolean);
+  return `<p class="bulletin-mean">Moyenne EPS <strong>${ClasseurNotes.format(info.retained)}</strong> / 20${info.overridden ? ' <small class="muted">(moyenne retenue)</small>' : ''}</p>
+    <p class="bulletin-notes">${rows}</p>${tags.length ? `<p class="muted">${esc(tags.join(' · '))}</p>` : ''}`;
 }
 
 function renderBulletins(group, term, students, principal) {
@@ -39,6 +49,7 @@ function renderBulletins(group, term, students, principal) {
     </div>
     <div id="bulletinIdentity" class="carnet-student bulletin-identity" aria-live="polite"></div>
     <form id="bulletinForm">
+      ${principal ? '' : '<div id="bulletinSummary" class="bulletin-summary"></div>'}
       <label for="bulletinRemark">${principal ? 'Appréciation générale' : 'Appréciation EPS'}</label>
       <textarea id="bulletinRemark" rows="5" maxlength="6000" ${locked ? 'readonly' : ''}></textarea>
       ${principal ? `<fieldset class="bulletin-mentions" ${locked ? 'disabled' : ''}><legend>Mentions</legend>
@@ -91,6 +102,7 @@ function renderBulletins(group, term, students, principal) {
     next.disabled = index === students.length - 1;
     $('bulletinIdentity').replaceChildren(RosterPortraits.photo(student.portrait), carnetStudentName(group, term, student));
     remark.value = current[principal ? 'conseil' : 'eps'];
+    if (!principal) $('bulletinSummary').innerHTML = bulletinNotesSummary(group, term, student.id);
     copy.disabled = !remark.value.trim();
     if (principal) {
       memo.value = current.memo;
@@ -102,6 +114,26 @@ function renderBulletins(group, term, students, principal) {
 
   function commit() {
     if (carnetTermLocked(group, term)) return true;
+    if (!principal) {
+      // L'appréciation EPS est celle du bilan du module Évaluations : un seul texte, visible aux deux endroits.
+      if (remark.value === current.eps) return true;
+      const studentId = students[index].id;
+      if (!carnetCommit(group, 'classeur', ClasseurNotes.setRemark(group, term, studentId, remark.value), term)) {
+        status.textContent = 'L’appréciation n’a pas été enregistrée. Tu peux encore copier le texte.';
+        return false;
+      }
+      const old = group.bulletins?.[term]?.[studentId];
+      if (old?.eps) {
+        const termEntries = {...group.bulletins[term]};
+        const {eps, ...rest} = old;
+        if (rest.conseil || rest.memo || rest.mentions?.length) termEntries[studentId] = rest;
+        else delete termEntries[studentId];
+        carnetCommit(group, 'bulletins', {...group.bulletins, [term]: termEntries}, term);
+      }
+      current = {...current, eps: remark.value};
+      status.textContent = 'Appréciation enregistrée (aussi dans le bilan des évaluations).';
+      return true;
+    }
     const entry = principal
       ? {...current, conseil: remark.value, memo: memo.value, mentions: checks.filter(check => check.checked).map(check => check.value)}
       : {...current, eps: remark.value};

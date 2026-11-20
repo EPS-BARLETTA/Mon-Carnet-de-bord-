@@ -4,6 +4,10 @@
   --line: #cfdad5;
   --bg: #f4f6f0;
   --accent: #226047;
+  --accent-hover: #194c38;
+  --action-ink: #244768;
+  --action-tint: #edf4fa;
+  --action-line: #bacbd9;
   --quiet: #526477;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
@@ -35,6 +39,10 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 p { line-height: 1.5; }
 .action { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 10px; padding: 9px 16px; width: fit-content; text-decoration: none; font-weight: 700; }
 .primary, .btn.ink { background: var(--accent); color: #fff; border-color: var(--accent); }
+.primary:enabled:hover, a.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.route-head .action:not(.primary) {
+  background: var(--action-tint); color: var(--action-ink); border: 1px solid var(--action-line);
+}
 .danger { color: #a62020; }
 .muted, .help { color: var(--quiet); }
 .app-header {

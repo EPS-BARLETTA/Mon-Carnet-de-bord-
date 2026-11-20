@@ -25,7 +25,20 @@
 .term-lock-error:empty { display: none; }
 #carnetTermCode { display: block; width: min(160px, 100%); }
 .carnet-term-notice + #carnetContent .attendance-status[aria-pressed="true"]:disabled { opacity: 1; }
-.carnet-sections a[aria-current="page"] { background: #e2edf9; border-color: #99b3d3; color: #203f65; }
+.carnet-sections a {
+  background: var(--action-tint); border-color: var(--action-line); color: var(--action-ink);
+}
+.carnet-sections a:hover { background: #e0ebf4; }
+.carnet-sections a[aria-current="page"] {
+  background: var(--action-ink); border-color: var(--action-ink); color: white;
+}
+.attendance-handoff .action {
+  border: 1px solid var(--action-line);
+  color: var(--action-ink); background: var(--action-tint);
+}
+.attendance-handoff .action.tool-blue {
+  color: white; background: var(--action-ink); border-color: var(--action-ink);
+}
 .carnet-panel { border: 1px solid var(--line); border-radius: 16px; padding: clamp(12px, 2vw, 22px); background: white; }
 .class-portraits {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(min(125px, 100%), 1fr)); gap: 10px;

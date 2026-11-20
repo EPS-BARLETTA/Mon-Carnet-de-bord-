@@ -1,0 +1,16 @@
+/* Écran de verrouillage (carnet et module Évaluations) */
+html.carnet-locked body > *:not(#carnetLock) { visibility: hidden; }
+.carnet-lock { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 24px; background: #14263d; color: #fff; font-family: system-ui, -apple-system, sans-serif; }
+.carnet-lock[hidden] { display: none; }
+.carnet-lock-box { width: min(360px, 100%); display: grid; gap: 12px; text-align: center; }
+.carnet-lock-icon { font-size: 44px; }
+.carnet-lock h2 { margin: 0 0 8px; font-size: 24px; }
+.carnet-lock label { text-align: left; font-weight: 600; }
+.carnet-lock input { font-size: 28px; letter-spacing: .4em; text-align: center; padding: 12px; border-radius: 12px; border: 0; min-height: 56px; }
+.carnet-lock button { min-height: 52px; border-radius: 12px; border: 0; font-size: 17px; font-weight: 700; cursor: pointer; }
+.carnet-lock-face { background: #fff; color: #14263d; }
+.carnet-lock-ok { background: #2f7d4f; color: #fff; }
+.carnet-lock-error { min-height: 1.4em; margin: 0; color: #ffb4b4; font-weight: 600; }
+.carnet-lock-forgot { text-align: left; color: #c9d4e2; }
+.carnet-lock-forgot summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.carnet-lock-wipe { width: 100%; background: transparent !important; color: #ffb4b4; border: 1px solid #ffb4b4 !important; }

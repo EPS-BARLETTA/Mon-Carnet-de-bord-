@@ -122,7 +122,17 @@ p { line-height: 1.5; }
 .personalized-class .carnet-head:has(.banner-photo) > a {
   display: inline-flex; align-items: center; min-height: 44px;
   padding: 7px 12px; border-radius: 9px;
-  background: white; color: var(--ink); font-weight: 650;
+  border: 1px solid rgb(255 255 255 / 38%);
+  background: rgb(8 19 29 / 60%); color: white; font-weight: 650;
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  text-underline-offset: .18em;
+}
+.personalized-class .carnet-head:has(.banner-photo) > a:hover {
+  background: rgb(8 19 29 / 75%);
+}
+.personalized-class .carnet-head:has(.banner-photo) > a:focus-visible {
+  outline: 2px solid white; outline-offset: 3px;
 }
 .menu-grid, .class-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(240px,100%),1fr)); gap: 16px; }
 .menu-card {

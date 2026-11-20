@@ -155,5 +155,27 @@ const ClasseurImport = (() => {
     return lines.join('\n\n');
   }
 
-  return {parse, plan, summary, nameKey, classKey, findStudent};
+  // Fusionne une classe en double dans une autre : évaluations, bilans et remarques du module,
+  // élèves associés par leur nom. La classe en double est retirée de la liste renvoyée.
+  function mergePlan(target, source, groups) {
+    const own = record(source.classeur) ? source.classeur : {};
+    const input = {classes: [{
+      id: source.id,
+      name: target.name,
+      students: [...(source.students || []), ...(source.withdrawnStudents || [])],
+      tables: Array.isArray(own.tables) ? own.tables : [],
+      bilans: record(own.bilans) ? own.bilans : {},
+      folders: Array.isArray(own.folders) ? own.folders : [],
+    }]};
+    const others = groups.filter(group => group.id !== source.id);
+    const result = plan(input, others);
+    const lost = [];
+    if (Object.keys(source.attendance || {}).some(term => Object.keys(source.attendance[term] || {}).length)) lost.push('l’appel');
+    if (Object.keys(source.bulletins || {}).some(term => Object.keys(source.bulletins[term] || {}).length)) lost.push('les bulletins et fiches PP');
+    if (Object.keys(source.evaluations || {}).some(term => (source.evaluations[term] || []).length)) lost.push('les anciennes notes du carnet');
+    if ((source.boards || []).some(board => board.board || (board.panels || []).length || (board.boardArchives || []).length)) lost.push('les tableaux blancs');
+    return {...result, lost};
+  }
+
+  return {parse, plan, summary, mergePlan, nameKey, classKey, findStudent};
 })();

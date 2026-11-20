@@ -89,7 +89,7 @@ function renderBulletins(group, term, students, principal) {
     picker.value = String(index);
     prev.disabled = index === 0;
     next.disabled = index === students.length - 1;
-    $('bulletinIdentity').replaceChildren(RosterPortraits.photo(student.portrait), document.createTextNode(student.name));
+    $('bulletinIdentity').replaceChildren(RosterPortraits.photo(student.portrait), carnetStudentName(group, term, student));
     remark.value = current[principal ? 'conseil' : 'eps'];
     copy.disabled = !remark.value.trim();
     if (principal) {

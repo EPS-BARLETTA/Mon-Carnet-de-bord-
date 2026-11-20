@@ -43,6 +43,34 @@
   cursor: zoom-in; touch-action: manipulation;
 }
 .carnet-portrait-trigger:hover { background: transparent; }
+.student-profile-link {
+  min-width: 0; padding: 0; border: 0; background: transparent; color: inherit;
+  font-weight: 700; text-align: inherit; text-decoration: underline; text-underline-offset: .18em;
+  overflow-wrap: anywhere;
+}
+.student-profile-link:hover { background: transparent; color: var(--accent); }
+.student-profile { width: min(calc(100% - 24px), 650px); }
+.student-profile-head {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+  gap: 8px; padding-bottom: 12px; background: white;
+}
+#carnetStudentIdentity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#carnetStudentTitle { margin: 0; overflow-wrap: anywhere; }
+#carnetStudentTerm { margin-left: 6px; max-width: 100%; }
+#carnetStudentDetails section { padding-top: 12px; margin-top: 14px; border-top: 1px solid var(--line); }
+.student-profile h3, .student-profile h4 { margin: 0 0 8px; }
+.student-profile-counts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr)); gap: 8px;
+}
+.student-profile-counts div { background: #eef3f5; padding: 8px; border-radius: 8px; }
+.student-profile-counts dt { font-size: .85rem; color: var(--quiet); }
+.student-profile-counts dd { margin: 4px 0 0; font-size: 1.2rem; font-weight: 700; }
+.student-profile-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.student-profile-list li {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px;
+  padding: 7px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere;
+}
+.student-profile-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .carnet-controls, .carnet-footer { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
 .carnet-controls label { min-width: min(190px, 100%); }
 .carnet-controls input, .carnet-controls select { display: block; width: 100%; margin-top: 4px; }

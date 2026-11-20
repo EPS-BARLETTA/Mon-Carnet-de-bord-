@@ -126,6 +126,19 @@ function renderCarnet(group, tab, term) {
     </nav>
     ${locked && tab !== 'trombinoscope' ? '<p class="carnet-term-notice">Trimestre verrouillé · Lecture seule</p>' : ''}
     <div id="carnetContent"></div>
+    <dialog id="carnetStudentDialog" class="student-profile" aria-labelledby="carnetStudentTitle">
+      <header class="student-profile-head">
+        <div id="carnetStudentIdentity"></div>
+        <form method="dialog"><button autofocus>Fermer la fiche</button></form>
+      </header>
+      <label for="carnetStudentTerm">Trimestre</label>
+      <select id="carnetStudentTerm">
+        <option value="1">Trimestre 1</option>
+        <option value="2">Trimestre 2</option>
+        <option value="3">Trimestre 3</option>
+      </select>
+      <div id="carnetStudentDetails"></div>
+    </dialog>
     <dialog id="carnetTermDialog" aria-labelledby="carnetTermTitle">
       <h2 id="carnetTermTitle"></h2>
       <p id="carnetTermDescription"></p>
@@ -143,7 +156,7 @@ function renderCarnet(group, tab, term) {
   bindCarnetTermLocks(group);
   if (tab === 'notes') renderCarnetGrades(group, term, students);
   else if (tab === 'bulletins' || tab === 'conseil') renderBulletins(group, term, students, tab === 'conseil');
-  else if (tab === 'trombinoscope') renderClassTrombinoscope(students);
+  else if (tab === 'trombinoscope') renderClassTrombinoscope(group, term, students);
   else renderCarnetAttendance(group, term, students);
 }
 
@@ -193,7 +206,107 @@ function carnetPortraitTrigger(student, photo) {
   return button;
 }
 
-function renderClassTrombinoscope(students) {
+function carnetStudentName(group, term, student) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'student-profile-link';
+  button.textContent = student.name;
+  button.setAttribute('aria-label', `Ouvrir la fiche de ${student.name}`);
+  button.setAttribute('aria-haspopup', 'dialog');
+  button.onclick = () => showCarnetStudent(group, term, student);
+  return button;
+}
+
+function carnetStudentExemptions(group, term, studentId) {
+  const exemptions = carnetTermLocked(group, term) ? group.termLocks[term].exemptions : group.exemptions;
+  return Array.isArray(exemptions?.[studentId]) ? exemptions[studentId] : [];
+}
+
+function carnetNumber(value) {
+  return new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2}).format(value);
+}
+
+function carnetAverage(evaluations, studentId) {
+  let weighted = 0;
+  let weights = 0;
+  for (const evaluation of evaluations) {
+    const score = evaluation.scores[studentId];
+    if (!Number.isFinite(score)) continue;
+    weighted += (score / evaluation.maximum) * 20 * evaluation.weight;
+    weights += evaluation.weight;
+  }
+  return weights ? carnetNumber(weighted / weights) : '—';
+}
+
+function carnetStudentDetails(group, term, studentId) {
+  const periods = carnetStudentExemptions(group, term, studentId);
+  const calls = Object.entries(group.attendance?.[term] || {})
+    .sort(([a], [b]) => b.localeCompare(a));
+  const counts = {absences: 0, forgot: 0, exempt: 0};
+  const history = [];
+  for (const [date, day] of calls) {
+    const state = day.entries?.[studentId] || {};
+    const labels = [];
+    if (state.absent) {
+      counts.absences++;
+      labels.push('Absent');
+    } else {
+      if (state.forgot) {
+        counts.forgot++;
+        labels.push('Oubli de tenue');
+      }
+      const long = periods.some(period => period.start <= date && period.end >= date);
+      if (state.excused || long) counts.exempt++;
+      if (state.excused) labels.push(state.minutes ? `Dispense de séance (${state.minutes} min)` : 'Dispense de séance');
+      if (long) labels.push('Dispense longue durée');
+    }
+    if (labels.length) history.push(`<li><strong>${esc(carnetDate(date))}</strong><span>${esc(labels.join(' · '))}</span></li>`);
+  }
+
+  const evaluations = group.evaluations?.[term] || [];
+  const appreciation = bulletinEntry(group, term, studentId);
+  return `<section>
+    <h3>Suivi de l’appel</h3>
+    <dl class="student-profile-counts">
+      <div><dt>Appels saisis</dt><dd>${calls.length}</dd></div>
+      <div><dt>Absences</dt><dd>${counts.absences}</dd></div>
+      <div><dt>Oublis de tenue</dt><dd>${counts.forgot}</dd></div>
+      <div><dt>Séances dispensées</dt><dd>${counts.exempt}</dd></div>
+    </dl>
+    ${history.length ? `<ul class="student-profile-list">${history.join('')}</ul>` : '<p class="muted">Aucune absence, dispense de séance ou tenue oubliée dans les appels de ce trimestre.</p>'}
+    ${periods.length ? `<h4>Dispenses longue durée</h4><ul class="student-profile-list">${[...periods].sort((a, b) => b.start.localeCompare(a.start)).map(period =>
+      `<li>Du ${esc(carnetDate(period.start))} au ${esc(carnetDate(period.end))}</li>`).join('')}</ul>` : ''}
+  </section>
+  <section>
+    <h3>Notes par évaluation</h3>
+    ${evaluations.length ? `<ul class="student-profile-list">${evaluations.map(item => {
+      const score = item.scores[studentId];
+      return `<li><span>${esc(item.name)} <small class="muted">Coef. ${carnetNumber(item.weight)}</small></span>
+        <strong>${Number.isFinite(score) ? `${carnetNumber(score)} / ${carnetNumber(item.maximum)}` : 'Non renseignée'}</strong></li>`;
+    }).join('')}</ul><p><strong>Moyenne / 20</strong> · ${carnetAverage(evaluations, studentId)}</p>` : '<p class="muted">Aucune évaluation pour ce trimestre.</p>'}
+  </section>
+  <section>
+    <h3>Appréciations</h3>
+    <h4>EPS</h4><p class="student-profile-text">${esc(appreciation.eps || 'Aucune appréciation saisie.')}</p>
+    ${group.principal === true ? `<h4>Conseil de classe</h4><p class="student-profile-text">${esc(appreciation.conseil || 'Aucune appréciation saisie.')}</p>` : ''}
+  </section>`;
+}
+
+function showCarnetStudent(group, term, student) {
+  const dialog = $('carnetStudentDialog');
+  const picker = $('carnetStudentTerm');
+  const heading = document.createElement('h2');
+  heading.id = 'carnetStudentTitle';
+  heading.textContent = student.name;
+  $('carnetStudentIdentity').replaceChildren(RosterPortraits.photo(student.portrait), heading);
+  picker.value = term;
+  picker.onchange = () => { $('carnetStudentDetails').innerHTML = carnetStudentDetails(group, picker.value, student.id); };
+  picker.onchange();
+  dialog.showModal();
+  dialog.scrollTop = 0;
+}
+
+function renderClassTrombinoscope(group, term, students) {
   const panel = $('carnetContent');
   panel.innerHTML = `<section class="carnet-panel">
     <h2>Trombinoscope</h2>
@@ -205,9 +318,7 @@ function renderClassTrombinoscope(students) {
     const portrait = RosterPortraits.photo(student.portrait);
     if (portrait.tagName === 'IMG') portrait.loading = 'lazy';
     else portrait.textContent = student.name.trim().split(/\s+/).slice(0, 2).map(word => word[0]).join('').toLocaleUpperCase('fr');
-    const name = document.createElement('strong');
-    name.textContent = student.name;
-    item.append(carnetPortraitTrigger(student, portrait), name);
+    item.append(carnetPortraitTrigger(student, portrait), carnetStudentName(group, term, student));
     return item;
   }));
 }
@@ -251,8 +362,7 @@ function renderCarnetAttendance(group, term, students) {
   const termDays = () => group.attendance?.[term] || {};
   const day = () => termDays()[dateField.value];
   const entry = id => day()?.entries?.[id] || {};
-  const exemptions = locked ? group.termLocks[term].exemptions : group.exemptions;
-  const activeExemption = id => (exemptions?.[id] || []).find(period =>
+  const activeExemption = id => carnetStudentExemptions(group, term, id).find(period =>
     period.start <= dateField.value && period.end >= dateField.value);
 
   function writeDay(entries, finalized = false) {
@@ -330,7 +440,7 @@ function renderCarnetAttendance(group, term, students) {
       row.classList.toggle('carnet-absent', Boolean(state.absent));
       row.innerHTML = `<th scope="row"><span class="carnet-student"></span></th><td></td>`;
       const photo = RosterPortraits.photo(student.portrait);
-      row.querySelector('.carnet-student').append(carnetPortraitTrigger(student, photo), document.createTextNode(student.name));
+      row.querySelector('.carnet-student').append(carnetPortraitTrigger(student, photo), carnetStudentName(group, term, student));
       const actions = document.createElement('div');
       actions.className = 'attendance-actions';
       function status(label, icon, color, pressed, apply) {
@@ -404,25 +514,13 @@ function renderCarnetGrades(group, term, students) {
     </form>
   </dialog>`;
   const table = panel.querySelector('tbody');
-  function average(studentId) {
-    let weighted = 0;
-    let weights = 0;
-    for (const evaluation of group.evaluations?.[term] || []) {
-      const score = evaluation.scores[studentId];
-      if (!Number.isFinite(score)) continue;
-      weighted += (score / evaluation.maximum) * 20 * evaluation.weight;
-      weights += evaluation.weight;
-    }
-    return weights ? new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 2}).format(weighted / weights) : '—';
-  }
-
   for (const student of students) {
     const row = document.createElement('tr');
     row.innerHTML = '<th scope="row"><span class="carnet-student"></span></th>';
-    row.querySelector('.carnet-student').append(RosterPortraits.photo(student.portrait), document.createTextNode(student.name));
+    row.querySelector('.carnet-student').append(RosterPortraits.photo(student.portrait), carnetStudentName(group, term, student));
     const result = document.createElement('td');
     result.className = 'carnet-average';
-    result.textContent = average(student.id);
+    result.textContent = carnetAverage(evaluations, student.id);
     for (const evaluation of evaluations) {
       const cell = document.createElement('td');
       const input = document.createElement('input');
@@ -441,7 +539,7 @@ function renderCarnetGrades(group, term, students) {
         if (input.value === '') delete scores[student.id];
         else scores[student.id] = input.valueAsNumber;
         if (carnetCommit(group, 'evaluations', {...group.evaluations, [term]: current.map(item =>
-          item.id === evaluation.id ? {...item, scores} : item)}, term)) result.textContent = average(student.id);
+          item.id === evaluation.id ? {...item, scores} : item)}, term)) result.textContent = carnetAverage(group.evaluations[term], student.id);
         else input.value = previous.scores[student.id] ?? '';
       };
       cell.append(input);

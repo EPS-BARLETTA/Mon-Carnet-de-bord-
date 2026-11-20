@@ -59,6 +59,8 @@ const PPPanel = (() => {
       ${locked ? '' : `<button type="button" class="pp-import">Importer des bulletins (PDF)</button>`}
       ${bulletin ? '<button type="button" class="pp-copy-ia">Copier pour une IA (anonymisé)</button>' : ''}
       ${bulletin && !locked ? '<button type="button" class="pp-paste-ia">Coller la réponse de l’IA</button>' : ''}
+      ${bulletin && !locked ? '<button type="button" class="danger pp-remove">Retirer ce bulletin</button>' : ''}
+      ${count > 1 && !locked ? '<button type="button" class="danger pp-remove-all">Retirer tous les bulletins du trimestre</button>' : ''}
       </div><input type="file" class="pp-file" accept="application/pdf,.pdf" multiple hidden></div>
       <p class="muted pp-status" role="status">${message ? esc(message) : count ? `${count} bulletin${count > 1 ? 's' : ''} importé${count > 1 ? 's' : ''} pour ce trimestre.` : 'Importe le PDF des bulletins de la classe (ou d’un élève) exporté depuis PRONOTE. Il est lu dans l’appareil.'}</p>`;
     if (!bulletin) {
@@ -135,6 +137,25 @@ const PPPanel = (() => {
       const {ia, ...rest} = bulletin;
       saveBulletin(context, student.id, rest);
       render(container, context);
+    });
+    container.querySelector('.pp-remove')?.addEventListener('click', () => {
+      if (!confirm(`Retirer le bulletin importé de ${student.name} pour ce trimestre ? Son appréciation générale et sa mention ne sont pas touchées.`)) return;
+      const all = {...(group.ppBulletins || {})};
+      const termBulletins = {...(all[term] || {})};
+      delete termBulletins[student.id];
+      all[term] = termBulletins;
+      if (!carnetCommit(group, 'ppBulletins', all, term)) return;
+      CarnetStore.flush().catch(() => {});
+      render(container, context, 'Bulletin retiré.');
+    });
+    container.querySelector('.pp-remove-all')?.addEventListener('click', () => {
+      const total = Object.keys(store(group, term)).length;
+      if (!confirm(`Retirer les ${total} bulletins importés de ce trimestre ? Les appréciations et mentions ne sont pas touchées.`)) return;
+      const all = {...(group.ppBulletins || {})};
+      delete all[term];
+      if (!carnetCommit(group, 'ppBulletins', all, term)) return;
+      CarnetStore.flush().catch(() => {});
+      render(container, context, 'Bulletins du trimestre retirés.');
     });
     container.querySelector('.pp-check')?.addEventListener('click', event => context.onMention(event.target.dataset.mention));
     container.querySelector('.pp-copy-ia')?.addEventListener('click', async () => {

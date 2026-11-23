@@ -251,10 +251,20 @@ function resumeBar(){
  if(!t)return "";
  return '<button type="button" class="resume" data-action="open-eval:'+esc(c.id)+':'+esc(t.id)+'"><span><small>Reprendre</small><b>'+esc(t.name)+', '+esc(c.name)+'</b></span><span class="resume-state">'+doneCount(c,t)+' sur '+c.students.length+' observés ›</span></button>';
 }
+/* Date de création : enregistrée à la création ; pour les anciennes évaluations, retrouvée dans l'identifiant (horodaté). */
+function createdOf(t){
+ if(t.createdAt)return t.createdAt;
+ const ms=parseInt(String(t.id||"").slice(-8),36);
+ return ms>Date.UTC(2023,0,1)&&ms<Date.now()+864e5?new Date(ms).toISOString().slice(0,10):"";
+}
+const dateFr=iso=>{const p=String(iso||"").split("-");return p.length===3?p[2]+"/"+p[1]+"/"+p[0]:""};
+const todayIso=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const formativeCheck=on=>'<label class="check"><input type="checkbox" id="fformative"'+(on?" checked":"")+'>Évaluation formative : pour situer les élèves, ne compte pas dans la moyenne du bulletin</label>';
 function evalRow(t){
  const c=cls(),seen=Object.keys(t.results).filter(id=>hasObservation(t,id)).length;
  const sub=isCcf(t)?'<span class="tag ccf-tag">CCF '+esc(ccfSpec(t).ca)+'</span> '+esc(ccfSpec(t).name)+', '+c.students.filter(s=>finalNote(t,s.id)!==null).length+'/'+c.students.length+' élèves notés'+(trimesterLabels[t.trimester]?', '+trimesterLabels[t.trimester]:""):plural(t.observables.length,"compétence")+', '+plural(t.groups.length,"groupe")+', '+seen+'/'+c.students.length+' élèves observés';
- return '<article class="eval-row"><div><h3>'+esc(t.name)+'</h3><p>'+sub+'</p></div>'+btn("Ouvrir","open-table:"+t.id,"primary")+menu("Options de "+t.name,btn("Renommer ou changer de trimestre","edit-table:"+t.id,"small")+btn("Réutiliser dans une autre classe","reuse-table:"+t.id,"small")+btn("Dupliquer sans les notes","duplicate-table:"+t.id,"small")+btn("Archiver en HTML","export-table:"+t.id,"small")+btn("Supprimer l’évaluation","delete-table:"+t.id,"small danger"))+'</article>';
+ const made=createdOf(t);
+ return '<article class="eval-row"><div><h3>'+esc(t.name)+(t.formative?' <span class="tag formative-tag">Formative</span>':'')+'</h3><p>'+sub+(made?'<br><span class="muted small-text">Créée le '+dateFr(made)+'</span>':'')+'</p></div>'+btn("Ouvrir","open-table:"+t.id,"primary")+menu("Options de "+t.name,btn("Renommer ou changer de trimestre","edit-table:"+t.id,"small")+btn(t.formative?"Compter dans la moyenne":"Marquer comme formative","toggle-formative:"+t.id,"small")+btn("Réutiliser dans une autre classe","reuse-table:"+t.id,"small")+btn("Dupliquer sans les notes","duplicate-table:"+t.id,"small")+btn("Archiver en HTML","export-table:"+t.id,"small")+btn("Supprimer l’évaluation","delete-table:"+t.id,"small danger"))+'</article>';
 }
 function evalHead(){
  const c=cls(),t=tab(),p=view.page;
@@ -316,13 +326,15 @@ const bilanTri=()=>trimesterLabels[activeTrimester]?activeTrimester:currentTrime
 function bilanOf(c,tri){
  if(!c.bilans||typeof c.bilans!=="object")c.bilans={};
  const b=c.bilans[tri]=c.bilans[tri]&&typeof c.bilans[tri]==="object"?c.bilans[tri]:{};
- ["coefs","overrides","remarks","tags"].forEach(k=>{if(!b[k]||typeof b[k]!=="object")b[k]={}});
+ ["coefs","keep","overrides","remarks","tags"].forEach(k=>{if(!b[k]||typeof b[k]!=="object")b[k]={}});
  if(!Array.isArray(b.classTags))b.classTags=[];
  if(typeof b.classRemark!=="string")b.classRemark="";
  return b;
 }
 const bilanTables=(c,tri)=>c.tables.filter(t=>t.trimester===tri);
-function coefOf(b,t){const v=parseNote(b.coefs[t.id]);return v===null||v<0?1:v}
+/* Retenue pour le bulletin : coche du bilan ; par défaut toutes les évaluations sauf les formatives. */
+function keptOf(b,t){return typeof b.keep[t.id]==="boolean"?b.keep[t.id]:!t.formative}
+function coefOf(b,t){if(!keptOf(b,t))return 0;const v=parseNote(b.coefs[t.id]);return v===null||v<0?1:v}
 /* Un élève absent ou dispensé n'est pas compté dans l'activité concernée. */
 function bilanNotes(c,tri,sid){
  const b=bilanOf(c,tri);
@@ -353,9 +365,9 @@ function bilanPage(){
  if(!tables.length)return html+'<div class="empty"><p>Aucune évaluation rangée dans ce trimestre. Pour en ajouter une, ouvre son menu ⋯ puis « Renommer ou changer de trimestre ».</p>'+btn("← Retour à la classe","open-class:"+c.id,"primary")+'</div>';
  const st=bilanStats(c,tri);
  html+='<div class="stats" id="bilan-stats">'+st.html+'</div>';
- html+='<p class="muted small-text bilan-help">Le coefficient de chaque activité se règle dans la ligne grise (0 pour ne pas la compter). Un élève absent ou dispensé n’est pas compté dans l’activité concernée. « Moyenne retenue » permet de corriger la moyenne à la main ; vide, elle reprend la moyenne calculée.</p>';
- html+='<div class="tablewrap bilan-table"><table><thead><tr><th>Élève</th>'+tables.map(t=>'<th>'+esc(t.name)+'</th>').join("")+'<th>Moyenne calculée</th><th>Moyenne retenue</th></tr><tr class="coef-row"><th>Coefficient</th>'+tables.map(t=>'<th><input class="input coef-input" type="number" inputmode="decimal" min="0" step=".5" data-bilan-coef="'+esc(t.id)+'" value="'+esc(b.coefs[t.id]??1)+'" aria-label="Coefficient de '+esc(t.name)+'"></th>').join("")+'<th></th><th></th></tr></thead><tbody>'+students.map(s=>{
-  const cells=bilanNotes(c,tri,s.id).map(x=>'<td>'+(x.status?'<span class="state '+x.status+'">'+STATUS[x.status]+'</span>':x.note===null?'<span class="muted">–</span>':fr(x.note))+'</td>').join("");
+ html+='<p class="muted small-text bilan-help">Coche « Retenue pour le bulletin » pour les évaluations qui comptent dans la moyenne et les appréciations ; les évaluations formatives sont décochées d’office. Le coefficient se règle dans la ligne grise. Un élève absent ou dispensé n’est pas compté dans l’activité concernée. « Moyenne retenue » permet de corriger la moyenne à la main ; vide, elle reprend la moyenne calculée.</p>';
+ html+='<div class="tablewrap bilan-table"><table><thead><tr><th>Élève</th>'+tables.map(t=>'<th class="'+(keptOf(b,t)?"":"bilan-off")+'">'+esc(t.name)+(t.formative?'<br><span class="tag formative-tag">Formative</span>':'')+(createdOf(t)?'<br><small class="muted">'+dateFr(createdOf(t))+'</small>':'')+'</th>').join("")+'<th>Moyenne calculée</th><th>Moyenne retenue</th></tr><tr class="keep-row"><th>Retenue pour le bulletin</th>'+tables.map(t=>'<th><label class="keep-check"><input type="checkbox" data-bilan-keep="'+esc(t.id)+'"'+(keptOf(b,t)?" checked":"")+' aria-label="Retenir '+esc(t.name)+' pour le bulletin"></label></th>').join("")+'<th></th><th></th></tr><tr class="coef-row"><th>Coefficient</th>'+tables.map(t=>'<th><input class="input coef-input" type="number" inputmode="decimal" min="0" step=".5" data-bilan-coef="'+esc(t.id)+'" value="'+esc(b.coefs[t.id]??1)+'"'+(keptOf(b,t)?"":" disabled")+' aria-label="Coefficient de '+esc(t.name)+'"></th>').join("")+'<th></th><th></th></tr></thead><tbody>'+students.map(s=>{
+  const cells=bilanNotes(c,tri,s.id).map(x=>'<td'+(keptOf(b,x.t)?'':' class="bilan-off"')+'>'+(x.status?'<span class="state '+x.status+'">'+STATUS[x.status]+'</span>':x.note===null?'<span class="muted">–</span>':fr(x.note))+'</td>').join("");
   const m=computedMean(c,tri,s.id);
   return '<tr><td>'+esc(s.name)+'</td>'+cells+'<td><b data-bilan-computed="'+esc(s.id)+'">'+(m===null?"–":fr(m))+'</b></td><td><input class="input note-input" type="number" inputmode="decimal" min="0" max="20" step=".01" data-bilan-override="'+esc(s.id)+'" value="'+esc(b.overrides[s.id]??"")+'" placeholder="'+(m===null?"":esc(fr(m)))+'" aria-label="Moyenne retenue de '+esc(s.name)+'"></td></tr>';
  }).join("")+'</tbody></table></div>';
@@ -365,7 +377,7 @@ function bilanPage(){
  html+='<section class="sheet remark-card remark-class"><div class="remark-head"><strong>Appréciation générale de la classe</strong></div><div class="remark-tags">'+CLASS_TAGS.map(([k,l])=>tagBtn("class",k,l,b.classTags.includes(k))).join("")+'</div><textarea class="input remark-text" data-bilan-class-remark="1" rows="3" placeholder="Appréciation de la classe…" aria-label="Appréciation générale de la classe">'+esc(b.classRemark)+'</textarea><div class="remark-foot"><span class="muted small-text" data-count="class">'+countLabel(b.classRemark)+'</span><div class="row">'+btn("Effacer","bilan-clear:class","small quiet")+btn("Copier","bilan-copy:class","small quiet")+btn("Reformuler","bilan-propose:class","small")+'</div></div></section>';
  html+='<div class="remark-list">'+students.map(s=>{
   const tags=b.tags[s.id]||[],m=retainedMean(c,tri,s.id);
-  const summary=bilanNotes(c,tri,s.id).map(x=>esc(x.t.name)+' '+(x.status?STATUS[x.status].toLowerCase():x.note===null?"–":fr(x.note))).join(" · ");
+  const summary=bilanNotes(c,tri,s.id).filter(x=>x.coef>0).map(x=>esc(x.t.name)+' '+(x.status?STATUS[x.status].toLowerCase():x.note===null?"–":fr(x.note))).join(" · ")||"Aucune évaluation retenue";
   return '<section class="sheet remark-card"><div class="remark-head"><strong>'+face(s)+esc(s.name)+'</strong><span class="remark-mean" data-bilan-mean="'+esc(s.id)+'">'+(m===null?"–":fr(m))+'</span></div><p class="muted small-text remark-notes">'+summary+'</p><div class="remark-tags">'+STUDENT_TAGS.map(([k,l])=>tagBtn(s.id,k,l,tags.includes(k))).join("")+'</div><textarea class="input remark-text" data-bilan-remark="'+esc(s.id)+'" rows="3" placeholder="Appréciation pour le bulletin…" aria-label="Appréciation de '+esc(s.name)+'">'+esc(b.remarks[s.id]||"")+'</textarea><div class="remark-foot"><span class="muted small-text" data-count="'+esc(s.id)+'">'+countLabel(b.remarks[s.id])+'</span><div class="row">'+btn("Effacer","bilan-clear:"+s.id,"small quiet")+btn("Copier","bilan-copy:"+s.id,"small quiet")+btn("Reformuler","bilan-propose:"+s.id,"small")+'</div></div></section>';
  }).join("")+'</div>';
  return html;
@@ -699,7 +711,7 @@ function newCcfForm(){
  const c=cls(),groups={};Object.entries(CCFX.SPECS).forEach(([k,s])=>{(groups[s.ca]=groups[s.ca]||[]).push([k,s.name])});
  modal("Nouvelle épreuve CCF (Terminale)",'<label class="field">Activité<select id="fccf">'+Object.entries(groups).map(([ca,list])=>'<optgroup label="'+esc(ca)+'">'+list.map(([k,n])=>'<option value="'+esc(k)+'">'+esc(n)+'</option>').join("")+'</optgroup>').join("")+'</select></label>'+field("Nom de l’épreuve (facultatif)","fname","","text",'placeholder="CCF Demi-fond"')+trimesterOptions(currentTrimester())+'<p class="muted small-text">Barèmes repris des fiches certificatives du lycée. La note /20 remonte dans le bilan du trimestre choisi.</p>',()=>{
   const apsa=input("fccf"),sp=CCFX.SPECS[apsa];if(!sp)return;
-  const t={id:uid(),name:input("fname")||"CCF "+sp.name.replace(/ \(.*\)$/,""),trimester:input("ftrimester"),folderId:null,observables:[],results:{},groups:[],ccf:{apsa}};
+  const t={id:uid(),createdAt:todayIso(),name:input("fname")||"CCF "+sp.name.replace(/ \(.*\)$/,""),trimester:input("ftrimester"),folderId:null,observables:[],results:{},groups:[],ccf:{apsa}};
   c.tables.push(t);save();close();terrainSelection.clear();view.tableId=t.id;data.lastOpened={classId:c.id,tableId:t.id};go("ccf");
  },{saveLabel:"Créer"});
 }
@@ -977,6 +989,7 @@ document.addEventListener("input",e=>{
 });
 document.addEventListener("change",e=>{
  const d=e.target.dataset;
+ if(d.bilanKeep){const c=cls(),tri=bilanTri(),b=bilanOf(c,tri),t=c.tables.find(x=>x.id===d.bilanKeep);if(!t)return;if(e.target.checked===!t.formative)delete b.keep[t.id];else b.keep[t.id]=e.target.checked;save();render();return}
  if(d.observationNote){const n=parseNote(e.target.value);if(e.target.value!==""&&(n===null||n<0||n>20)){e.target.value="";updateResult(d.observationNote,r=>{r.note=""});toast("La note doit être comprise entre 0 et 20.")}return}
  if(d.bilanOverride||d.bilanCoef){
   const c=cls(),b=bilanOf(c,bilanTri()),v=e.target.value,n=parseNote(v),bad=v!==""&&(n===null||n<0||(d.bilanOverride&&n>20));
@@ -1040,15 +1053,16 @@ const actions={
   actions.classes();
  },
  "archive-class"(id){const x=data.classes.find(x=>x.id===id);x.archived=!x.archived;save();render()},
- "new-trimester"(id){const c=cls();modal("Nouvelle évaluation",'<div class="notice ccf-notice"><p><b>Classe de Terminale ?</b> Pour une épreuve certificative (CCF) avec le barème des fiches du lycée, choisis plutôt l’épreuve CCF.</p>'+btn("Créer une épreuve CCF","new-ccf","primary small")+'</div>'+field("Activité (ex. Escalade, Volley-ball)","fname")+trimesterOptions(id),()=>{const name=input("fname");if(!name){toast("Donne un nom à l’évaluation.");return}const t={id:uid(),name,trimester:input("ftrimester"),folderId:null,observables:[],results:{},groups:[]};c.tables.push(t);activeTrimester=t.trimester||"unclassified";save();close();go("setup",{tableId:t.id})},{saveLabel:"Créer"})},
- "edit-table"(id){const c=cls(),t=c.tables.find(x=>x.id===id);modal("Renommer ou changer de trimestre",field("Nom de l’évaluation","fname",t.name)+trimesterOptions(t.trimester)+(c.folders.length?'<label class="field">Dossier<select id="ffolder"><option value="">Aucun</option>'+c.folders.map(f=>'<option value="'+esc(f.id)+'"'+(t.folderId===f.id?" selected":"")+'>'+esc(f.name)+'</option>').join("")+'</select></label>':""),()=>{const name=input("fname");if(!name)return;t.name=name;t.trimester=input("ftrimester");if($("ffolder"))t.folderId=input("ffolder")||null;save();close();render()})},
- "duplicate-table"(id){const c=cls(),t=c.tables.find(x=>x.id===id),copy=JSON.parse(JSON.stringify(t));copy.id=uid();copy.name=t.name+" (copie)";copy.results={};copy.groups.forEach(g=>{g.id=uid();g.comment="";g.levels={}});c.tables.push(copy);save();render();toast("Évaluation dupliquée sans les notes.")},
+ "new-trimester"(id){const c=cls();modal("Nouvelle évaluation",'<div class="notice ccf-notice"><p><b>Classe de Terminale ?</b> Pour une épreuve certificative (CCF) avec le barème des fiches du lycée, choisis plutôt l’épreuve CCF.</p>'+btn("Créer une épreuve CCF","new-ccf","primary small")+'</div>'+field("Activité (ex. Escalade, Volley-ball)","fname")+trimesterOptions(id)+formativeCheck(false),()=>{const name=input("fname");if(!name){toast("Donne un nom à l’évaluation.");return}const t={id:uid(),createdAt:todayIso(),name,trimester:input("ftrimester"),folderId:null,observables:[],results:{},groups:[]};if($("fformative")?.checked)t.formative=true;c.tables.push(t);activeTrimester=t.trimester||"unclassified";save();close();go("setup",{tableId:t.id})},{saveLabel:"Créer"})},
+ "edit-table"(id){const c=cls(),t=c.tables.find(x=>x.id===id);modal("Renommer ou changer de trimestre",field("Nom de l’évaluation","fname",t.name)+trimesterOptions(t.trimester)+formativeCheck(t.formative)+(c.folders.length?'<label class="field">Dossier<select id="ffolder"><option value="">Aucun</option>'+c.folders.map(f=>'<option value="'+esc(f.id)+'"'+(t.folderId===f.id?" selected":"")+'>'+esc(f.name)+'</option>').join("")+'</select></label>':""),()=>{const name=input("fname");if(!name)return;t.name=name;t.trimester=input("ftrimester");if($("fformative")?.checked)t.formative=true;else delete t.formative;if($("ffolder"))t.folderId=input("ffolder")||null;save();close();render()})},
+ "toggle-formative"(id){const t=cls().tables.find(x=>x.id===id);if(!t)return;if(t.formative)delete t.formative;else t.formative=true;save();render();toast(t.formative?"Évaluation formative : elle ne compte plus dans la moyenne du bulletin.":"L’évaluation compte de nouveau dans la moyenne.")},
+ "duplicate-table"(id){const c=cls(),t=c.tables.find(x=>x.id===id),copy=JSON.parse(JSON.stringify(t));copy.id=uid();copy.createdAt=todayIso();copy.name=t.name+" (copie)";copy.results={};copy.groups.forEach(g=>{g.id=uid();g.comment="";g.levels={}});c.tables.push(copy);save();render();toast("Évaluation dupliquée sans les notes.")},
  "reuse-table"(id){
   const c=cls(),t=c.tables.find(x=>x.id===id),others=data.classes.filter(x=>x.id!==c.id&&!x.archived);
   if(!others.length){toast("Crée d’abord une autre classe.");return}
   modal("Réutiliser dans une autre classe",'<p class="muted">Copie le nom et les compétences de « '+esc(t.name)+' ». Les notes et les groupes restent ici.</p><label class="field">Classe<select id="fclass">'+others.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join("")+'</select></label>',()=>{
    const target=data.classes.find(x=>x.id===input("fclass"));if(!target)return;
-   target.tables.push({id:uid(),name:t.name,trimester:t.trimester,folderId:null,observables:JSON.parse(JSON.stringify(t.observables)),results:{},groups:[],...(t.ccf?{ccf:{...t.ccf}}:{})});
+   target.tables.push({id:uid(),createdAt:todayIso(),name:t.name,trimester:t.trimester,...(t.formative?{formative:true}:{}),folderId:null,observables:JSON.parse(JSON.stringify(t.observables)),results:{},groups:[],...(t.ccf?{ccf:{...t.ccf}}:{})});
    save();close();render();toast("Évaluation copiée dans "+target.name+".");
   },{saveLabel:"Copier"});
  },

@@ -281,7 +281,7 @@ function carnetStudentDetails(group, term, studentId) {
   </section>
   <section>
     <h3>Évaluations du trimestre</h3>
-    ${notes.rows.length ? `<ul class="student-profile-list">${notes.rows.map(row => `<li><span>${esc(row.name)}${row.coef !== 1 ? ` <small class="muted">Coef. ${carnetNumber(row.coef)}</small>` : ''}${row.comment ? `<br><small class="muted">${esc(row.comment)}</small>` : ''}</span>
+    ${notes.rows.length ? `<ul class="student-profile-list">${notes.rows.map(row => `<li${row.coef > 0 ? '' : ' class="bulletin-off"'}><span>${esc(row.name)}${row.coef <= 0 ? ` <small class="muted">(${row.formative && !row.kept ? 'formative, ' : ''}non comptée)</small>` : row.coef !== 1 ? ` <small class="muted">Coef. ${carnetNumber(row.coef)}</small>` : ''}${row.comment ? `<br><small class="muted">${esc(row.comment)}</small>` : ''}</span>
         <strong>${row.statusLabel ? esc(row.statusLabel) : row.note !== null ? `${ClasseurNotes.format(row.note)} / 20` : row.missing ? `${row.missing} compétence${row.missing > 1 ? 's' : ''} à évaluer` : 'Non évalué'}</strong></li>`).join('')}</ul>
       <p class="student-profile-mean"><strong>Moyenne du trimestre</strong> · ${ClasseurNotes.format(notes.retained)} / 20${notes.overridden ? ` <small class="muted">(retenue ; calculée : ${ClasseurNotes.format(notes.computed)})</small>` : ''}</p>
       ${tags.length ? `<p class="muted">${esc(tags.join(' · '))}</p>` : ''}`

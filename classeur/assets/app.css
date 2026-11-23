@@ -625,3 +625,10 @@ body{background:var(--bg)}
 .class-card[style*="--class-color"],.class-card[style*="--class-color"] .class-open{background:var(--class-color)}
 .class-card[style*="--class-color"] .class-open:hover{filter:brightness(.92)}
 .sheet,.class-card,.card{border-radius:14px}
+
+/* Bilan : évaluations retenues pour le bulletin */
+.formative-tag{background:#eef3fb;color:#2c5a8c;font-size:.72em;vertical-align:middle}
+.bilan-table .bilan-off{opacity:.45}
+.bilan-table .keep-row th{background:#f3f7f1;font-weight:600}
+.keep-check{display:flex;justify-content:center;align-items:center;min-height:44px}
+.keep-check input{width:26px;height:26px;accent-color:#2e7d4f}

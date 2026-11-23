@@ -53,13 +53,20 @@ const ClasseurNotes = (() => {
     const safe = record(value) ? value : {};
     return {
       coefs: record(safe.coefs) ? safe.coefs : {},
+      keep: record(safe.keep) ? safe.keep : {},
       overrides: record(safe.overrides) ? safe.overrides : {},
       remarks: record(safe.remarks) ? safe.remarks : {},
       tags: record(safe.tags) ? safe.tags : {},
     };
   }
 
+  // Évaluation retenue pour le bulletin : choix du bilan, sinon toutes sauf les formatives.
+  function kept(summary, table) {
+    return typeof summary.keep[table.id] === 'boolean' ? summary.keep[table.id] : !table.formative;
+  }
+
   function coefOf(summary, table) {
+    if (!kept(summary, table)) return 0;
     const value = parseNote(summary.coefs[table.id]);
     return value === null || value < 0 ? 1 : value;
   }
@@ -75,6 +82,8 @@ const ClasseurNotes = (() => {
         id: table.id,
         name: table.name || 'Évaluation',
         coef: coefOf(summary, table),
+        kept: kept(summary, table),
+        formative: Boolean(table.formative),
         status,
         statusLabel: STATUS[status] || '',
         note: status ? null : finalNote(group, table, studentId),

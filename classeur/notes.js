@@ -20,6 +20,18 @@ const ClasseurNotes = (() => {
   const degreePoints = (item, level) => Number(item.points) * level / 4;
   const isCcf = table => Boolean(table?.ccf && window.CCF?.SPECS?.[table.ccf.apsa]);
 
+  // Points affinés par appui long : valables seulement dans la plage du degré choisi.
+  function finePoints(item, holder, level) {
+    const base = degreePoints(item, level);
+    const raw = holder?.pts?.[item.id];
+    const value = Number(raw);
+    if (raw == null || !Number.isFinite(value)) return base;
+    const lo = level === 1 ? 0 : degreePoints(item, level - 1);
+    const hi = level === 4 ? degreePoints(item, 4) : degreePoints(item, level + 1);
+    const ok = value > lo && (level === 4 ? value <= hi : value < hi) && Math.abs(value * 4 - Math.round(value * 4)) < 1e-9;
+    return ok ? value : base;
+  }
+
   function computedScore(table, studentId) {
     const items = scored(table);
     if (!items.length) return null;
@@ -32,7 +44,8 @@ const ClasseurNotes = (() => {
       const points = Number(item.points);
       const level = item.scope === 'collective' ? team?.levels?.[item.id] : result.levels?.[item.id];
       max += points;
-      if (level) earned += degreePoints(item, level);
+      const holder = item.scope === 'collective' ? team : result;
+      if (level) earned += finePoints(item, holder, level);
       else missing++;
     }
     return {earned, max, missing, note: missing ? null : Math.round(earned / max * 20 * 4) / 4};

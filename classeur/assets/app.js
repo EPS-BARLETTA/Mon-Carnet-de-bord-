@@ -220,13 +220,17 @@ function degreeMean(items,a){const vals=items.map(o=>Number(a.levels?.[o.id]||0)
 const fr=n=>String(Math.round(n*100)/100).replace(".",",");
 const degreePoints=(o,n)=>Number(o.points)*n/4;
 const pointsLabel=v=>fr(v)+(v>1?" pts":" pt");
+/* Points affinés (appui long sur un degré) : entre les points du degré inférieur et ceux du degré supérieur, au quart de point. */
+function fineRange(o,n){const lo=n===1?0:degreePoints(o,n-1),hi=n===4?degreePoints(o,4):degreePoints(o,n+1),out=[];for(let v=Math.floor(lo*4+1)/4;v<hi-1e-9||(n===4&&v<=hi+1e-9);v+=.25)out.push(Math.round(v*100)/100);return out}
+function pointsOf(o,holder,n){const v=Number(holder?.pts?.[o.id]);return Number.isFinite(v)&&holder?.pts?.[o.id]!=null&&fineRange(o,n).includes(v)?v:degreePoints(o,n)}
+const isFine=(o,holder,n)=>pointsOf(o,holder,n)!==degreePoints(o,n);
 const degreeScale=o=>Number(o.points)>0?[1,2,3,4].map(n=>'<span class="rate d'+n+'">Degré '+n+' : <b>'+pointsLabel(degreePoints(o,n))+'</b></span>').join(""):'<span class="muted small-text">Indique les points de cette compétence.</span>';
 const scored=t=>t.observables.filter(o=>Number(o.points)>0);
 function computedScore(t,sid){
  const items=scored(t);if(!items.length)return null;
  const r=t.results[sid]||{},g=t.groups.find(x=>x.studentIds.includes(sid));
  let earned=0,max=0,missing=0;
- items.forEach(o=>{const p=Number(o.points),level=observableScope(o)==="collective"?g?.levels?.[o.id]:r.levels?.[o.id];max+=p;if(level)earned+=degreePoints(o,level);else missing++});
+ items.forEach(o=>{const p=Number(o.points),holder=observableScope(o)==="collective"?g:r,level=holder?.levels?.[o.id];max+=p;if(level)earned+=pointsOf(o,holder,level);else missing++});
  return {earned,max,missing,note:missing?null:Math.round(earned/max*20*4)/4};
 }
 function scoreText(t,sid){const s=computedScore(t,sid);return !s?"":s.missing?plural(s.missing,"compétence")+" à évaluer":fr(s.earned)+" / "+fr(s.max)+" points, soit "+fr(s.note)+" / 20"}
@@ -817,11 +821,12 @@ function criterionDetails(o,target){
  return '<details class="criteria" data-keep="crit:'+esc(target)+':'+esc(o.id)+'"><summary>Voir les critères</summary>'+[1,2,3,4].map(n=>'<div class="criterion c'+n+'"><b>'+n+'</b><span>'+esc(degreeText(o,n))+'</span></div>').join("")+'<p class="criteria-note">'+(o.source==="fiche"?"Compétence issue des fiches ressources Éduscol. Échelle de degrés commune, modifiable.":"Repères pédagogiques modifiables et non officiels.")+'</p></details>';
 }
 function competencyPanel(t,values,scope,target,compact){
+ const holder=scope==="collective"?t.groups.find(x=>x.id===target):t.results[target];
  const items=t.observables.filter(o=>observableScope(o)===scope),title=scope==="collective"?"Compétences du groupe":"Compétences";
  if(!items.length)return compact?"":'<section class="comp-panel"><h3>'+title+'</h3><p class="muted small-text">Aucune compétence à évaluer.</p>'+btn("Ajouter des compétences","tab:setup","small")+'</section>';
  return '<section class="comp-panel"'+(compact?' style="border:0;padding:0"':"")+'>'+(compact?"":'<h3>'+title+'</h3>')+items.map(o=>{
   const current=values?.[o.id];
-  return '<div class="comp-item"><div class="comp-name">'+esc(o.name)+'</div><div class="degrees">'+[1,2,3,4].map(n=>'<button type="button" class="degree d'+n+'" data-action="competency-level:'+scope+':'+esc(target)+':'+esc(o.id)+':'+n+'" aria-label="'+esc(o.name)+', degré '+n+'" title="'+esc(degreeText(o,n))+'" aria-pressed="'+(current===n)+'">'+n+(Number(o.points)>0?'<small>'+pointsLabel(degreePoints(o,n))+'</small>':"")+'</button>').join("")+'</div>'+criterionDetails(o,target)+'</div>'}).join("")+'</section>';
+  return '<div class="comp-item"><div class="comp-name">'+esc(o.name)+'</div><div class="degrees">'+[1,2,3,4].map(n=>'<button type="button" class="degree d'+n+'" data-action="competency-level:'+scope+':'+esc(target)+':'+esc(o.id)+':'+n+'" aria-label="'+esc(o.name)+', degré '+n+'" title="'+esc(degreeText(o,n))+'" aria-pressed="'+(current===n)+'"'+(current===n&&Number(o.points)>0&&isFine(o,holder,n)?' data-fine="1"':"")+'>'+n+(Number(o.points)>0?'<small>'+(current===n&&isFine(o,holder,n)?"✎ ":"")+pointsLabel(current===n?pointsOf(o,holder,n):degreePoints(o,n))+'</small>':"")+'</button>').join("")+'</div>'+criterionDetails(o,target)+'</div>'}).join("")+(items.some(o=>Number(o.points)>0)?'<p class="muted small-text fine-help">Appui long sur un degré pour affiner ses points.</p>':"")+'</section>';
 }
 function updateResult(sid,fn,later){const t=tab();if(!t.results[sid])t.results[sid]={levels:{},note:"",comment:"",drawing:""};fn(t.results[sid]);if(later)saveSoon();else save()}
 
@@ -975,6 +980,31 @@ document.addEventListener("pointercancel",()=>clearTerrainDrag());
 document.addEventListener("touchmove",e=>{if(terrainDrag?.active&&e.cancelable)e.preventDefault()},{passive:false});
 document.addEventListener("click",e=>{if(Date.now()<terrainDragSuppressUntil&&e.target.closest("[data-drag-student]")){e.preventDefault();e.stopImmediatePropagation()}},true);
 
+/* Appui long sur un degré : choisir les points dans la plage du degré. */
+let finePress=null,fineSuppressUntil=0;
+document.addEventListener("pointerdown",e=>{
+ const el=e.target.closest('.degree[data-action^="competency-level:"]');if(!el||e.button!==0)return;
+ clearTimeout(finePress?.timer);
+ finePress={el,x:e.clientX,y:e.clientY,timer:setTimeout(()=>{fineSuppressUntil=Date.now()+900;if(navigator.vibrate)navigator.vibrate(15);openFinePoints(el.dataset.action)},500)};
+},{passive:true});
+document.addEventListener("pointermove",e=>{if(finePress&&Math.hypot(e.clientX-finePress.x,e.clientY-finePress.y)>12){clearTimeout(finePress.timer);finePress=null}},{passive:true});
+["pointerup","pointercancel"].forEach(k=>document.addEventListener(k,()=>{if(finePress){clearTimeout(finePress.timer);finePress=null}},{passive:true}));
+document.addEventListener("click",e=>{if(Date.now()<fineSuppressUntil&&e.target.closest(".degree")){e.preventDefault();e.stopImmediatePropagation()}},true);
+document.addEventListener("contextmenu",e=>{if(e.target.closest(".degree"))e.preventDefault()});
+function openFinePoints(action){
+ const [,scope,target,oid,n]=action.split(":"),num=Number(n),t=tab(),o=t?.observables.find(x=>x.id===oid);
+ if(!o||!(Number(o.points)>0))return;
+ const holder=scope==="collective"?t.groups.find(x=>x.id===target):(t.results[target]||null),cur=holder?.levels?.[oid]===num?pointsOf(o,holder,num):degreePoints(o,num);
+ const chips=fineRange(o,num).map(v=>'<button type="button" class="fine-chip'+(v===degreePoints(o,num)?" base":"")+'" data-fine-value="'+v+'" aria-pressed="'+(v===cur)+'">'+fr(v)+'</button>').join("");
+ modal(o.name+" · degré "+num,'<p class="muted small-text">Points de ce degré, ajustés entre le degré '+(num>1?num-1:"0")+' et le degré '+(num<4?num+1:4)+'. Le degré '+num+' reste celui de l’observation. Valeur de base en gras.</p><div class="fine-chips">'+chips+'</div>',null);
+ document.querySelectorAll("[data-fine-value]").forEach(b=>b.onclick=()=>{
+  const v=Number(b.dataset.fineValue),base=degreePoints(o,num);
+  const apply=h=>{h.levels=h.levels||{};h.levels[oid]=num;h.pts=h.pts||{};if(v===base)delete h.pts[oid];else h.pts[oid]=v};
+  if(scope==="collective"){const g=t.groups.find(x=>x.id===target);if(!g)return;apply(g);save()}else updateResult(target,apply);
+  close();render();toast(o.name+" : "+pointsLabel(v)+" (degré "+num+").");
+ });
+}
+
 /* ---------- Saisie ---------- */
 document.addEventListener("input",e=>{
  const d=e.target.dataset;
@@ -1085,8 +1115,9 @@ const actions={
  "competency-level"(scope,target,oid,n,el){
   const t=tab(),o=t?.observables.find(x=>x.id===oid),num=Number(n);if(!o||observableScope(o)!==scope)return;
   let value;
-  if(scope==="collective"){const g=t.groups.find(x=>x.id===target);if(!g)return;g.levels=g.levels||{};value=g.levels[oid]=g.levels[oid]===num?null:num;save()}
-  else updateResult(target,r=>{r.levels=r.levels||{};value=r.levels[oid]=r.levels[oid]===num?null:num});
+  if(scope==="collective"){const g=t.groups.find(x=>x.id===target);if(!g)return;g.levels=g.levels||{};value=g.levels[oid]=g.levels[oid]===num?null:num;if(g.pts)delete g.pts[oid];save()}
+  else updateResult(target,r=>{r.levels=r.levels||{};value=r.levels[oid]=r.levels[oid]===num?null:num;if(r.pts)delete r.pts[oid]});
+  if(Number(o.points)>0){render();return}
   /* Mise à jour ciblée : le clavier et le texte en cours restent en place. */
   el.parentElement.querySelectorAll(".degree").forEach((b,i)=>b.setAttribute("aria-pressed",String(value===i+1)));
   refreshScores(t);

@@ -268,7 +268,7 @@ function evalRow(t){
  const c=cls(),seen=Object.keys(t.results).filter(id=>hasObservation(t,id)).length;
  const sub=isCcf(t)?'<span class="tag ccf-tag">CCF '+esc(ccfSpec(t).ca)+'</span> '+esc(ccfSpec(t).name)+', '+c.students.filter(s=>finalNote(t,s.id)!==null).length+'/'+c.students.length+' élèves notés'+(trimesterLabels[t.trimester]?', '+trimesterLabels[t.trimester]:""):plural(t.observables.length,"compétence")+', '+plural(t.groups.length,"groupe")+', '+seen+'/'+c.students.length+' élèves observés';
  const made=createdOf(t);
- return '<article class="eval-row"><div><h3>'+esc(t.name)+(t.formative?' <span class="tag formative-tag">Formative</span>':'')+'</h3><p>'+sub+(made?'<br><span class="muted small-text">Créée le '+dateFr(made)+'</span>':'')+'</p></div>'+btn("Ouvrir","open-table:"+t.id,"primary")+menu("Options de "+t.name,btn("Renommer ou changer de trimestre","edit-table:"+t.id,"small")+btn(t.formative?"Compter dans la moyenne":"Marquer comme formative","toggle-formative:"+t.id,"small")+btn("Réutiliser dans une autre classe","reuse-table:"+t.id,"small")+btn("Dupliquer sans les notes","duplicate-table:"+t.id,"small")+btn("Archiver en HTML","export-table:"+t.id,"small")+btn("Supprimer l’évaluation","delete-table:"+t.id,"small danger"))+'</article>';
+ return '<article class="eval-row" data-eval-row="'+esc(t.id)+'"><div><h3>'+esc(t.name)+(t.formative?' <span class="tag formative-tag">Formative</span>':'')+'</h3><p>'+sub+(made?'<br><span class="muted small-text">Créée le '+dateFr(made)+'</span>':'')+'</p></div>'+btn("Ouvrir","open-table:"+t.id,"primary")+menu("Options de "+t.name,btn("Renommer ou changer de trimestre","edit-table:"+t.id,"small")+btn(t.formative?"Compter dans la moyenne":"Marquer comme formative","toggle-formative:"+t.id,"small")+btn("Réutiliser dans une autre classe","reuse-table:"+t.id,"small")+btn("Dupliquer sans les notes","duplicate-table:"+t.id,"small")+btn("Archiver en HTML","export-table:"+t.id,"small")+btn("Supprimer l’évaluation","delete-table:"+t.id,"small danger"))+'</article>';
 }
 function evalHead(){
  const c=cls(),t=tab(),p=view.page;
@@ -980,8 +980,20 @@ document.addEventListener("pointercancel",()=>clearTerrainDrag());
 document.addEventListener("touchmove",e=>{if(terrainDrag?.active&&e.cancelable)e.preventDefault()},{passive:false});
 document.addEventListener("click",e=>{if(Date.now()<terrainDragSuppressUntil&&e.target.closest("[data-drag-student]")){e.preventDefault();e.stopImmediatePropagation()}},true);
 
+/* Appui long sur une évaluation de la liste : proposer de la supprimer. */
+let evalPress=null,fineSuppressUntil=0;
+document.addEventListener("pointerdown",e=>{
+ const row=e.target.closest("[data-eval-row]");if(!row||e.button!==0||e.target.closest(".menu"))return;
+ clearTimeout(evalPress?.timer);
+ evalPress={x:e.clientX,y:e.clientY,timer:setTimeout(()=>{evalPress=null;fineSuppressUntil=Date.now()+900;if(navigator.vibrate)navigator.vibrate(15);actions["delete-table"](row.dataset.evalRow)},650)};
+},{passive:true});
+document.addEventListener("pointermove",e=>{if(evalPress&&Math.hypot(e.clientX-evalPress.x,e.clientY-evalPress.y)>10){clearTimeout(evalPress.timer);evalPress=null}},{passive:true});
+["pointerup","pointercancel"].forEach(k=>document.addEventListener(k,()=>{if(evalPress){clearTimeout(evalPress.timer);evalPress=null}},{passive:true}));
+document.addEventListener("click",e=>{if(Date.now()<fineSuppressUntil&&e.target.closest("[data-eval-row]")){e.preventDefault();e.stopImmediatePropagation()}},true);
+document.addEventListener("contextmenu",e=>{if(e.target.closest("[data-eval-row]"))e.preventDefault()});
+
 /* Appui long sur un degré : choisir les points dans la plage du degré. */
-let finePress=null,fineSuppressUntil=0;
+let finePress=null;
 document.addEventListener("pointerdown",e=>{
  const el=e.target.closest('.degree[data-action^="competency-level:"]');if(!el||e.button!==0)return;
  clearTimeout(finePress?.timer);
@@ -1096,7 +1108,7 @@ const actions={
    save();close();render();toast("Évaluation copiée dans "+target.name+".");
   },{saveLabel:"Copier"});
  },
- "delete-table"(id){const c=cls();if(!confirm("Supprimer cette évaluation, ses notes et ses observations ?"))return;c.tables=c.tables.filter(x=>x.id!==id);save();render()},
+ "delete-table"(id){const c=cls(),t=c.tables.find(x=>x.id===id);if(!t||!confirm("Supprimer l’évaluation « "+t.name+" », ses notes et ses observations ?"))return;c.tables=c.tables.filter(x=>x.id!==id);save();render();toast("Évaluation supprimée.")},
  "add-student"(){studentForm(null)},
  "edit-student"(id){studentForm(cls().students.find(x=>x.id===id))},
  "delete-student"(id){

@@ -641,3 +641,6 @@ body{background:var(--bg)}
 .fine-chip{min-width:64px;min-height:52px;border:1px solid #c9d3dc;border-radius:12px;background:#fff;font-size:1.05rem;font-weight:600;color:#1d2b3a;cursor:pointer}
 .fine-chip.base{font-weight:800;border-width:2px}
 .fine-chip[aria-pressed="true"]{background:#1f5fa8;border-color:#1f5fa8;color:#fff}
+
+/* Appui long sur une évaluation */
+.eval-row{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}

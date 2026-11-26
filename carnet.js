@@ -548,11 +548,40 @@ function renderCarnetEvaluations(group, term, students) {
       </div>
       <a class="button primary" href="${link}">Ouvrir les évaluations</a>
     </div>
-    ${tables.length ? `<ul class="evaluations-list">${tables.map(table => `<li><a href="${link}"><strong>${esc(table.name)}</strong>
+    ${tables.length ? `<ul class="evaluations-list">${tables.map(table => `<li><a href="${link}" data-eval-id="${esc(table.id)}"><strong>${esc(table.name)}</strong>
       <span class="muted">${observed(table)} / ${students.length} élève${students.length > 1 ? 's' : ''} observé${observed(table) > 1 ? 's' : ''}</span></a></li>`).join('')}</ul>`
       : `<p class="muted">Aucune évaluation pour ce trimestre.${others ? ` ${others} évaluation${others > 1 ? 's' : ''} dans les autres trimestres.` : ''}</p>`}
     <div id="legacyGrades"></div>
   </section>`;
+  // Appui long sur une évaluation : proposer de la supprimer.
+  for (const item of panel.querySelectorAll('[data-eval-id]')) {
+    let timer;
+    let start;
+    let pressed = false;
+    const cancel = () => { clearTimeout(timer); timer = undefined; };
+    const remove = () => {
+      pressed = true;
+      const table = (group.classeur?.tables || []).find(entry => entry.id === item.dataset.evalId);
+      if (!table) return;
+      if (carnetTermLocked(group, term)) { alert('Ce trimestre est verrouillé.'); return; }
+      if (!confirm(`Supprimer l’évaluation « ${table.name} », ses notes et ses observations ?`)) return;
+      const classeur = {...group.classeur, tables: group.classeur.tables.filter(entry => entry.id !== table.id)};
+      if (carnetCommit(group, 'classeur', classeur, term)) renderCarnetEvaluations(group, term, students);
+    };
+    item.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || !event.isPrimary) return;
+      cancel();
+      pressed = false;
+      start = [event.clientX, event.clientY];
+      timer = setTimeout(() => { cancel(); if (navigator.vibrate) navigator.vibrate(15); remove(); }, 650);
+    });
+    item.addEventListener('pointermove', event => {
+      if (timer && Math.hypot(event.clientX - start[0], event.clientY - start[1]) > 10) cancel();
+    });
+    for (const type of ['pointerup', 'pointerleave', 'pointercancel']) item.addEventListener(type, cancel);
+    item.addEventListener('contextmenu', event => { event.preventDefault(); cancel(); if (!pressed) remove(); });
+    item.addEventListener('click', event => { if (pressed) { event.preventDefault(); pressed = false; } });
+  }
   if ((group.evaluations?.[term] || []).length) {
     const legacy = document.createElement('details');
     legacy.className = 'legacy-grades';

@@ -439,7 +439,14 @@ function hashStr(x){let h=7;for(const ch of String(x))h=(h*31+ch.codePointAt(0))
 const proposalTurns={},lastProposal={};
 const tierOf=m=>m===null?null:m>=17.5?"A":m>=16?"B":m>=14?"C":m>=12?"D":m>=10?"E":"F";
 const apsaLabel=n=>/^\p{Lu}\p{Ll}/u.test(n)?n.charAt(0).toLocaleLowerCase("fr")+n.slice(1):n;
+/* Jamais deux appréciations identiques dans la classe : on tire une autre formulation tant que le texte existe déjà chez un autre élève. */
 function studentProposal(c,tri,s){
+ const b=bilanOf(c,tri),norm=x=>String(x||"").trim().toLocaleLowerCase("fr");
+ const others=new Set(Object.entries(b.remarks).filter(([id])=>id!==s.id).map(([,v])=>norm(v)).filter(Boolean));
+ let text="";for(let i=0;i<16;i++){text=studentProposalOnce(c,tri,s);if(!others.has(norm(text)))break}
+ return text;
+}
+function studentProposalOnce(c,tri,s){
  const b=bilanOf(c,tri),tags=b.tags[s.id]||[],has=k=>tags.includes(k),P=firstName(s)||"l’élève",G=(m,f)=>s.sex==="F"?f:m,il=G("il","elle");
  const notes=bilanNotes(c,tri,s.id),m=retainedMean(c,tri,s.id),tier=tierOf(m),t3=tri==="T3";
  const key=s.id+tri,turn=proposalTurns[key]=(proposalTurns[key]??-1)+1,seed=hashStr(key)+turn;
@@ -454,9 +461,9 @@ function studentProposal(c,tri,s){
  if(has("arrive"))parts.push(G("Arrivé","Arrivée")+" en cours de trimestre, "+P+" n’a pas pu être "+G("évalué","évaluée")+" dans toutes les activités.");
  const discretOpen=has("discret")&&"ABCD".includes(tier);
  const OPEN={
-  A:["Un excellent trimestre pour "+P+".","D’excellents résultats ce trimestre pour "+P+".","Un excellent trimestre à tout point de vue.",...(t3?["Un excellent troisième trimestre pour "+P+", à l’image de son année menée avec rigueur et sérieux."]:[])],
-  B:["De très bons résultats ce trimestre.","Un très bon trimestre pour "+P+".",P+" obtient de très bons résultats ce trimestre."],
-  C:["De bons résultats ce trimestre.","Un bon trimestre pour "+P+".",P+" obtient de bons résultats ce trimestre."],
+  A:["Un excellent trimestre pour "+P+".","D’excellents résultats ce trimestre pour "+P+".","Un excellent trimestre à tout point de vue.","Un trimestre remarquable pour "+P+".",P+" réalise un excellent trimestre.",...(t3?["Un excellent troisième trimestre pour "+P+", à l’image de son année menée avec rigueur et sérieux."]:[])],
+  B:["De très bons résultats ce trimestre.","Un très bon trimestre pour "+P+".",P+" obtient de très bons résultats ce trimestre.","Un très bon trimestre dans l’ensemble.",P+" réalise un très bon trimestre."],
+  C:["De bons résultats ce trimestre.","Un bon trimestre pour "+P+".",P+" obtient de bons résultats ce trimestre.","Un bon trimestre dans l’ensemble.",P+" réalise un bon trimestre."],
   D:["Des résultats satisfaisants ce trimestre.","Ensemble satisfaisant.","Un trimestre satisfaisant pour "+P+"."],
   E:["Des résultats convenables et largement perfectibles.","Des résultats justes satisfaisants pour "+P+" ce trimestre.","Un trimestre convenable, mais "+P+" peut viser mieux."],
   F:["Un trimestre fragile.","Des résultats insuffisants ce trimestre.","Un trimestre difficile pour "+P+"."]
@@ -469,9 +476,9 @@ function studentProposal(c,tri,s){
  if(has("implication"))att.push(pick(["Les résultats auraient pu être bien meilleurs avec une plus grande implication en classe.","Il faudra s’impliquer davantage en classe : "+il+" en a les capacités.","Le manque d’implication en classe freine les progrès."],4));
  if(has("discret")&&!discretOpen)att.push("Élève "+G("discret","discrète")+", "+P+" doit oser s’engager davantage dans les activités.");
  const BASE={
-  A:["Le travail a été sérieux et appliqué.","Un travail de qualité et une participation active.","Le travail et la participation ont été sérieux et appliqués."],
-  B:["Le travail a été sérieux et appliqué.","Un travail sérieux et une participation active.","Le travail est rigoureux et la participation active."],
-  C:["Le travail et l’implication dans la matière sont sérieux.","La participation et l’implication en cours sont satisfaisantes.","Le travail est sérieux et appliqué."],
+  A:["Le travail a été sérieux et appliqué.","Un travail de qualité et une participation active.","Le travail et la participation ont été sérieux et appliqués.","Un engagement constant et une participation exemplaire.","Le travail est rigoureux et la participation très active."],
+  B:["Le travail a été sérieux et appliqué.","Un travail sérieux et une participation active.","Le travail est rigoureux et la participation active.","L’implication en cours est constante et appréciable.","Un engagement régulier et une participation active."],
+  C:["Le travail et l’implication dans la matière sont sérieux.","La participation et l’implication en cours sont satisfaisantes.","Le travail est sérieux et appliqué.","Le travail est régulier et la participation satisfaisante.","L’implication en cours est sérieuse."],
   D:["Le travail est sérieux mais peut encore gagner en régularité.","Une implication plus constante permettrait de progresser.","Il reste une belle marge de progression dans la matière."],
   E:["Une plus grande concentration en classe permettrait de progresser.","Il faudra s’impliquer davantage pour progresser.","Il reste une belle marge de progression : "+il+" en a les capacités."],
   F:["Il faut s’investir davantage dans les situations d’apprentissage pour progresser.","L’engagement en cours doit nettement progresser.","Il faudra se mobiliser davantage et ne pas se décourager."]

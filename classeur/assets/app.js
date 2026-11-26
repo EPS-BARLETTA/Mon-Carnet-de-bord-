@@ -232,12 +232,15 @@ function computedScore(t,sid){
 function scoreText(t,sid){const s=computedScore(t,sid);return !s?"":s.missing?plural(s.missing,"compétence")+" à évaluer":fr(s.earned)+" / "+fr(s.max)+" points, soit "+fr(s.note)+" / 20"}
 const scoreLine=(t,sid)=>scored(t).length?'<p class="score-line" data-score="'+esc(sid)+'">'+esc(scoreText(t,sid))+'</p>':"";
 /* Avec des points, la note est calculée ; sans points, c'est la note saisie à la main qui compte. */
-function finalNote(t,sid){if(isCcf(t)){const r=t.results[sid];return r&&STATUS[r.status]?null:ccfEval(t,sid)?.note??null}return scored(t).length?computedScore(t,sid).note:parseNote(t.results[sid]?.note)}
+function finalNote(t,sid){if(isCcf(t)){const r=t.results[sid];return r&&STATUS[r.status]?null:ccfEval(t,sid)?.note??null}if(scored(t).length){const adj=parseNote(t.results[sid]?.adjust);return adj!==null&&adj>=0&&adj<=20?adj:computedScore(t,sid).note}return parseNote(t.results[sid]?.note)}
 const autoNote=(t,sid)=>{const n=finalNote(t,sid);return n===null?"–":fr(n)};
-function noteField(t,sid,a,cls=""){return scored(t).length?'<output class="note-auto" data-note-auto="'+esc(sid)+'">'+esc(autoNote(t,sid))+'</output>':noteInput(sid,a,cls)}
+/* Avec des points : la note calculée, que l'on peut ajuster à la main (ex. un élève entre deux degrés). */
+function adjustHint(t,sid){const n=computedScore(t,sid)?.note,adj=parseNote(t.results[sid]?.adjust);return adj===null?"Ajuste si l’élève est entre deux degrés.":"Ajustée à la main · calculée : "+(n===null?"–":fr(n))}
+function noteField(t,sid,a,cls=""){return scored(t).length?'<span class="note-adjust-wrap"><output class="note-auto" data-note-auto="'+esc(sid)+'">'+esc(autoNote(t,sid))+'</output><input class="note-input note-adjust '+cls+'" type="number" inputmode="decimal" min="0" max="20" step=".25" data-note-adjust="'+esc(sid)+'" value="'+esc(a.adjust??"")+'" placeholder="Ajuster" aria-label="Ajuster la note sur 20"><small class="muted note-adjust-hint" data-adjust-hint="'+esc(sid)+'">'+esc(adjustHint(t,sid))+'</small></span>':noteInput(sid,a,cls)}
 function refreshScores(t){
  document.querySelectorAll("[data-score]").forEach(el=>{el.textContent=scoreText(t,el.dataset.score)});
  document.querySelectorAll("[data-note-auto]").forEach(el=>{el.textContent=autoNote(t,el.dataset.noteAuto)});
+ document.querySelectorAll("[data-adjust-hint]").forEach(el=>{el.textContent=adjustHint(t,el.dataset.adjustHint)});
 }
 function pointsTotal(t){const max=scored(t).reduce((n,o)=>n+Number(o.points),0);return !max?"Indique des points pour calculer la note.":max===20?"Total : 20 points.":"Total : "+fr(max)+" points, ramenés sur 20 dans la note."}
 const doneCount=(c,t)=>c.students.filter(s=>hasObservation(t,s.id)||t.results[s.id]?.status).length;
@@ -981,6 +984,7 @@ document.addEventListener("input",e=>{
  if(d.observationGroup){const g=tab()?.groups.find(x=>x.id===d.observationGroup);if(g){g.comment=e.target.value;saveSoon()}}
  else if(d.observationStudent)updateResult(d.observationStudent,r=>{r.comment=e.target.value},true);
  else if(d.observationNote)updateResult(d.observationNote,r=>{r.note=e.target.value},true);
+ else if(d.noteAdjust){updateResult(d.noteAdjust,r=>{if(e.target.value==="")delete r.adjust;else r.adjust=e.target.value},true);refreshScores(tab())}
  else if(d.ccfField){ccfWrite(d.ccfStudent,cc=>{cc.v[d.ccfField]=e.target.value},true);const t=tab(),f=t&&isCcf(t)?ccfSpec(t).fields.flatMap(g=>g.items).find(x=>x.k===d.ccfField):null,pv=document.querySelector('[data-ccf-preview="'+CSS.escape(d.ccfField)+'"]');if(f&&pv)pv.innerHTML=ccfPreview(f,e.target.value);patchCcf()}
  else if(d.bilanRemark){setRemark(d.bilanRemark,e.target.value);saveSoon()}
  else if(d.bilanClassRemark){setRemark("class",e.target.value);saveSoon()}
@@ -990,6 +994,7 @@ document.addEventListener("input",e=>{
 document.addEventListener("change",e=>{
  const d=e.target.dataset;
  if(d.bilanKeep){const c=cls(),tri=bilanTri(),b=bilanOf(c,tri),t=c.tables.find(x=>x.id===d.bilanKeep);if(!t)return;if(e.target.checked===!t.formative)delete b.keep[t.id];else b.keep[t.id]=e.target.checked;save();render();return}
+ if(d.noteAdjust){const n=parseNote(e.target.value);if(e.target.value!==""&&(n===null||n<0||n>20)){e.target.value="";updateResult(d.noteAdjust,r=>{delete r.adjust});refreshScores(tab());toast("La note doit être comprise entre 0 et 20.")}return}
  if(d.observationNote){const n=parseNote(e.target.value);if(e.target.value!==""&&(n===null||n<0||n>20)){e.target.value="";updateResult(d.observationNote,r=>{r.note=""});toast("La note doit être comprise entre 0 et 20.")}return}
  if(d.bilanOverride||d.bilanCoef){
   const c=cls(),b=bilanOf(c,bilanTri()),v=e.target.value,n=parseNote(v),bad=v!==""&&(n===null||n<0||(d.bilanOverride&&n>20));

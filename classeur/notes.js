@@ -45,7 +45,11 @@ const ClasseurNotes = (() => {
       const student = (group.students || []).find(item => item.id === studentId);
       return window.CCF.evaluate(table.ccf.apsa, result?.ccf, student?.sex || '')?.note ?? null;
     }
-    return scored(table).length ? computedScore(table, studentId).note : parseNote(result?.note);
+    if (scored(table).length) {
+      const adjusted = parseNote(result?.adjust); // note ajustée à la main
+      return adjusted !== null && adjusted >= 0 && adjusted <= 20 ? adjusted : computedScore(table, studentId).note;
+    }
+    return parseNote(result?.note);
   }
 
   function bilan(group, term) {

@@ -188,3 +188,5 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 
 /* Évaluation non comptée dans la moyenne (formative ou décochée dans le bilan) */
 .bulletin-off { opacity: .6; }
+
+.evaluations-list a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }

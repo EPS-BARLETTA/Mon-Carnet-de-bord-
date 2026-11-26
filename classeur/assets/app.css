@@ -632,3 +632,12 @@ body{background:var(--bg)}
 .bilan-table .keep-row th{background:#f3f7f1;font-weight:600}
 .keep-check{display:flex;justify-content:center;align-items:center;min-height:44px}
 .keep-check input{width:26px;height:26px;accent-color:#2e7d4f}
+
+/* Points affinés par appui long */
+.degree{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.degree[data-fine="1"] small{font-weight:700}
+.fine-help{margin:.4rem 0 0}
+.fine-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.fine-chip{min-width:64px;min-height:52px;border:1px solid #c9d3dc;border-radius:12px;background:#fff;font-size:1.05rem;font-weight:600;color:#1d2b3a;cursor:pointer}
+.fine-chip.base{font-weight:800;border-width:2px}
+.fine-chip[aria-pressed="true"]{background:#1f5fa8;border-color:#1f5fa8;color:#fff}

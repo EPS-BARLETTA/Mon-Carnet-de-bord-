@@ -185,3 +185,6 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .carnet-sections .pp-tab:hover { background: #1e3a57; }
 .carnet-sections .pp-tab[aria-current="page"] { background: #f5c400; border-color: #d9ad00; color: #14293e; }
 .carnet-sections .pp-tab[aria-current="page"] span { color: #14293e; }
+
+/* Évaluation non comptée dans la moyenne (formative ou décochée dans le bilan) */
+.bulletin-off { opacity: .6; }

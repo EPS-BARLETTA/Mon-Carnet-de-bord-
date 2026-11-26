@@ -24,7 +24,7 @@ function bulletinEntry(group, term, studentId) {
 function bulletinNotesSummary(group, term, studentId) {
   const info = ClasseurNotes.student(group, term, studentId);
   if (!info.rows.length) return '<p class="muted">Aucune évaluation ce trimestre.</p>';
-  const rows = info.rows.map(row => `<span>${esc(row.name)} <strong>${row.statusLabel ? esc(row.statusLabel) : ClasseurNotes.format(row.note)}</strong></span>`).join('');
+  const rows = info.rows.map(row => `<span${row.coef > 0 ? '' : ' class="bulletin-off"'}>${esc(row.name)} <strong>${row.statusLabel ? esc(row.statusLabel) : ClasseurNotes.format(row.note)}</strong>${row.coef > 0 ? '' : ` <small class="muted">(${row.formative && !row.kept ? 'formative, ' : ''}non comptée)</small>`}</span>`).join('');
   const tags = info.tags.map(tag => ClasseurNotes.TAGS[tag]).filter(Boolean);
   return `<p class="bulletin-mean">Moyenne EPS <strong>${ClasseurNotes.format(info.retained)}</strong> / 20${info.overridden ? ' <small class="muted">(moyenne retenue)</small>' : ''}</p>
     <p class="bulletin-notes">${rows}</p>${tags.length ? `<p class="muted">${esc(tags.join(' · '))}</p>` : ''}`;

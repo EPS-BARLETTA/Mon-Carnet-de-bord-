@@ -18,6 +18,7 @@ function bulletinEntry(group, term, studentId) {
     conseil: text('conseil'),
     memo: text('memo'),
     mentions: BULLETIN_MENTIONS.map(([key]) => key).filter(key => mentions.includes(key)),
+    ...(entry?.validated ? {validated: true} : {}),
   };
 }
 
@@ -38,8 +39,14 @@ function renderBulletins(group, term, students, principal) {
     return;
   }
 
+  if (principal && PPConseil.isOn()) {
+    PPConseil.render(panel, group, term, students, () => renderBulletins(group, term, students, principal));
+    return;
+  }
+
   panel.innerHTML = `<section class="card bulletin">
-    <h2>${principal ? 'Fiches pour le conseil de classe' : 'Appréciations EPS'}</h2>
+    <div class="bulletin-title"><h2>${principal ? 'Fiches pour le conseil de classe' : 'Appréciations EPS'}</h2>
+      ${principal ? '<button type="button" class="primary conseil-open" id="conseilOpen">Mode conseil de classe</button>' : ''}</div>
     <div class="bulletin-nav">
       <button id="bulletinPrev" type="button">← Précédent</button>
       <label for="bulletinStudent">Élève
@@ -73,6 +80,7 @@ function renderBulletins(group, term, students, principal) {
     <p id="bulletinStatus" class="muted" role="status"></p>
   </section>`;
 
+  if (principal) $('conseilOpen').onclick = () => { commit(); PPConseil.setOn(true); renderBulletins(group, term, students, principal); };
   const picker = $('bulletinStudent');
   const prev = $('bulletinPrev');
   const next = $('bulletinNext');
@@ -169,7 +177,7 @@ function renderBulletins(group, term, students, principal) {
     if (JSON.stringify(entry) === JSON.stringify(current)) return true;
     const studentId = students[index].id;
     const termEntries = {...group.bulletins?.[term]};
-    if (entry.eps || entry.conseil || entry.memo || entry.mentions.length) termEntries[studentId] = entry;
+    if (entry.eps || entry.conseil || entry.memo || entry.mentions.length || entry.validated) termEntries[studentId] = entry;
     else delete termEntries[studentId];
     if (!carnetCommit(group, 'bulletins', {...group.bulletins, [term]: termEntries}, term)) {
       status.textContent = 'La fiche n’a pas été enregistrée. Tu peux encore copier le texte.';

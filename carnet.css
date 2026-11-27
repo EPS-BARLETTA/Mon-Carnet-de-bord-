@@ -196,3 +196,34 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .pp-status.pp-busy::before { content: ''; display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pp-spin .8s linear infinite; }
 .pp-status.pp-error { color: #a1271b; font-weight: 700; }
 @keyframes pp-spin { to { transform: rotate(360deg); } }
+
+/* Mode conseil de classe */
+.bulletin-title { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.conseil-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.conseil-head h2 { margin: 0; }
+.conseil-progress { height: 8px; border-radius: 99px; background: #e6edf4; overflow: hidden; margin: 12px 0 18px; }
+.conseil-progress span { display: block; height: 100%; background: #3d8bd9; }
+.conseil-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.conseil-card { position: relative; width: 100%; display: grid; justify-items: center; gap: 6px; padding: 12px 8px; border: 1px solid #d7dee6; border-radius: 16px; background: #fff; text-align: center; cursor: pointer; }
+.conseil-card .pf-roster-photo { width: 84px; height: 104px; object-fit: cover; border-radius: 10px; display: grid; place-items: center; }
+.conseil-card strong { font-size: .95rem; line-height: 1.2; }
+.conseil-mini { font-size: .85rem; color: #45566a; }
+.conseil-card.is-valid, .conseil-fiche.is-valid { background: #e3f0fd; border-color: #9cc4ec; }
+.conseil-check { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; background: #3d8bd9; color: #fff; font-weight: 800; display: grid; place-items: center; }
+.conseil-fiche { transition: background .2s; }
+.conseil-identity { display: flex; align-items: center; gap: 16px; margin: 12px 0; }
+.conseil-identity .pf-roster-photo { width: 96px; height: 120px; object-fit: cover; border-radius: 12px; display: grid; place-items: center; }
+.conseil-identity h2 { margin: 0; }
+.conseil-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 8px 0 14px; }
+.conseil-figures div { background: rgb(255 255 255 / 70%); border: 1px solid #dfe6ee; border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; }
+.conseil-figures span { font-size: .85rem; color: #55667a; }
+.conseil-figures strong { font-size: 1.4rem; }
+.conseil-points { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.conseil-points ul { margin: 4px 0 0; padding-left: 1.2em; }
+.conseil-fiche h3 { margin: 14px 0 4px; font-size: 1rem; }
+.conseil-text { margin: 0; white-space: pre-wrap; }
+.conseil-validate { display: flex; align-items: center; gap: 12px; margin: 18px 0 6px; padding: 14px 16px; border: 2px solid #9cc4ec; border-radius: 14px; font-size: 1.15rem; font-weight: 700; background: #fff; }
+.conseil-validate input { width: 30px; height: 30px; accent-color: #3d8bd9; }
+.conseil-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+.conseil-actions button { min-height: 52px; font-size: 1.05rem; }
+@media (max-width: 600px) { .conseil-figures, .conseil-points { grid-template-columns: 1fr; } }

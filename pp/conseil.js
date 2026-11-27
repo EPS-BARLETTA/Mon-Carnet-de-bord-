@@ -87,12 +87,12 @@ const PPConseil = (() => {
           <div class="cbox cbox-figure tone-${gap === null ? 'grey' : gap >= 0 ? 'green' : 'orange'}"><span>Écart à la classe</span><strong>${gap === null ? '–' : (gap > 0 ? '+' : '') + PPAnalyse.format(gap)}</strong></div>
         </div>
         <div class="conseil-points">
-          <div class="cbox cbox-list tone-green"><h3>👍 Points forts</h3>${list(forts)}</div>
-          <div class="cbox cbox-list tone-orange"><h3>🎯 Points à travailler</h3>${list(faibles)}</div>
+          <div class="cbox cbox-list tone-green"><h3>Points forts</h3>${list(forts)}</div>
+          <div class="cbox cbox-list tone-orange"><h3>Points à travailler</h3>${list(faibles)}</div>
         </div>` : ''}
-      <div class="cbox cbox-text tone-blue"><h3>✍️ Appréciation générale</h3>
+      <div class="cbox cbox-text tone-blue"><h3>Appréciation générale</h3>
         <p class="conseil-text">${entry.conseil ? esc(entry.conseil) : '<span class="muted">Aucune appréciation saisie.</span>'}</p></div>
-      <div class="cbox cbox-mention"><h3>🏅 Mention</h3>
+      <div class="cbox cbox-mention"><h3>Mention</h3>
         <div>${mentions.length ? mentions.map(([key, label]) => `<span class="cbadge big tone-${MENTION_TONE[key]}">${esc(label)}</span>`).join(' ') : '<span class="muted">Aucune mention.</span>'}</div></div>
       <label class="conseil-validate"><input type="checkbox" id="conseilValid" ${entry.validated ? 'checked' : ''} ${locked ? 'disabled' : ''}> Validé au conseil</label>
       <div class="conseil-actions">

@@ -20,13 +20,35 @@ const PPConseil = (() => {
       forts: ia?.points_forts || result.forts, faibles: ia?.points_faibles || result.faibles};
   }
 
-  function setValidated(group, term, studentId, value) {
+  // Modifie la fiche de l'élève (appréciation, mentions, validation, note libre) sans quitter le mode conseil.
+  function saveEntry(group, term, studentId, change) {
     const termEntries = {...group.bulletins?.[term]};
     const entry = {...bulletinEntry(group, term, studentId)};
-    if (value) entry.validated = true; else delete entry.validated;
-    if (entry.eps || entry.conseil || entry.memo || entry.mentions.length || entry.validated) termEntries[studentId] = entry;
+    change(entry);
+    if (!entry.validated) delete entry.validated;
+    if (!entry.conseilNote?.trim()) delete entry.conseilNote;
+    if (entry.eps || entry.conseil || entry.memo || entry.mentions.length || entry.validated || entry.conseilNote) termEntries[studentId] = entry;
     else delete termEntries[studentId];
     return carnetCommit(group, 'bulletins', {...group.bulletins, [term]: termEntries}, term);
+  }
+  const setValidated = (group, term, studentId, value) => saveEntry(group, term, studentId, entry => { entry.validated = value; });
+
+  // Appui long (≈ 0,6 s) sur un élément ; un appui court ne déclenche rien.
+  function onLongPress(element, action) {
+    let timer;
+    let start;
+    const cancel = () => { clearTimeout(timer); timer = undefined; };
+    element.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || !event.isPrimary) return;
+      start = [event.clientX, event.clientY];
+      cancel();
+      timer = setTimeout(() => { cancel(); if (navigator.vibrate) navigator.vibrate(15); action(); }, 600);
+    });
+    element.addEventListener('pointermove', event => {
+      if (timer && Math.hypot(event.clientX - start[0], event.clientY - start[1]) > 10) cancel();
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(type => element.addEventListener(type, cancel));
+    element.addEventListener('contextmenu', event => event.preventDefault());
   }
 
   const mentionsText = entry => BULLETIN_MENTIONS.filter(([key]) => entry.mentions.includes(key)).map(([, label]) => label).join(' · ');
@@ -90,11 +112,16 @@ const PPConseil = (() => {
           <div class="cbox cbox-list tone-green"><h3>Points forts</h3>${list(forts)}</div>
           <div class="cbox cbox-list tone-orange"><h3>Points à travailler</h3>${list(faibles)}</div>
         </div>` : ''}
-      <div class="cbox cbox-text tone-blue"><h3>Appréciation générale</h3>
+      <div class="cbox cbox-text tone-blue" id="conseilRemarkBox"><h3>Appréciation générale <small class="muted">· appui long pour modifier</small></h3>
         <p class="conseil-text">${entry.conseil ? esc(entry.conseil) : '<span class="muted">Aucune appréciation saisie.</span>'}</p></div>
-      <div class="cbox cbox-mention"><h3>Mention</h3>
-        <div>${mentions.length ? mentions.map(([key, label]) => `<span class="cbadge big tone-${MENTION_TONE[key]}">${esc(label)}</span>`).join(' ') : '<span class="muted">Aucune mention.</span>'}</div></div>
-      <label class="conseil-validate"><input type="checkbox" id="conseilValid" ${entry.validated ? 'checked' : ''} ${locked ? 'disabled' : ''}> Validé au conseil</label>
+      <div class="cbox cbox-mention"><h3>Mention <small class="muted">· appui long sur une mention pour la retirer</small></h3>
+        <div class="conseil-mentions">${mentions.map(([key, label]) => `<span class="cbadge big tone-${MENTION_TONE[key]}" data-mention="${key}">${esc(label)}</span>`).join(' ') || '<span class="muted">Aucune mention.</span>'}
+          ${!locked && mentions.length < BULLETIN_MENTIONS.length ? '<button type="button" class="conseil-add" id="conseilAddMention">+ Ajouter</button>' : ''}</div>
+        <div class="conseil-choices" id="conseilMentionChoices" hidden>${BULLETIN_MENTIONS.filter(([key]) => !entry.mentions.includes(key)).map(([key, label]) => `<button type="button" class="cbadge big tone-${MENTION_TONE[key]}" data-add-mention="${key}">${esc(label)}</button>`).join('')}</div></div>
+      <div class="conseil-bottom">
+        <label class="conseil-validate"><input type="checkbox" id="conseilValid" ${entry.validated ? 'checked' : ''} ${locked ? 'disabled' : ''}> Validé au conseil</label>
+        <label class="conseil-note"><span>Note du conseil</span><textarea id="conseilNote" rows="2" maxlength="1000" placeholder="À retenir pour cet élève…" ${locked ? 'disabled' : ''}>${esc(entry.conseilNote || '')}</textarea></label>
+      </div>
       <div class="conseil-actions">
         ${next ? `<button type="button" class="primary" id="conseilNext">${esc(next.name)} →</button>` : '<button type="button" class="primary" id="conseilEnd">Fin de la liste · trombinoscope</button>'}
       </div>
@@ -103,13 +130,53 @@ const PPConseil = (() => {
     panel.querySelector('#conseilPhoto').replaceWith(RosterPortraits.photo(student.portrait));
     panel.querySelector('#conseilBack').onclick = () => render(panel, group, term, students, onExit);
     panel.querySelector('#conseilQuit').onclick = () => { setOn(false); onExit(); };
+    const status = text => { panel.querySelector('#conseilStatus').textContent = text; };
+    const reload = () => fiche(panel, group, term, students, index, onExit);
+    if (!locked) {
+      // Appréciation générale : appui long pour la modifier sur place.
+      const box = panel.querySelector('#conseilRemarkBox');
+      onLongPress(box, () => {
+        if (box.querySelector('textarea')) return;
+        box.innerHTML = `<h3>Appréciation générale</h3><textarea class="conseil-edit" rows="4" maxlength="1500">${esc(entry.conseil)}</textarea>
+          <div class="row"><button type="button" class="primary" data-save>Enregistrer</button><button type="button" data-cancel>Annuler</button></div>`;
+        const area = box.querySelector('textarea');
+        area.focus();
+        box.querySelector('[data-cancel]').onclick = reload;
+        box.querySelector('[data-save]').onclick = () => {
+          if (!saveEntry(group, term, student.id, item => { item.conseil = area.value.trim().slice(0, 1500); })) return status('Enregistrement impossible.');
+          reload();
+        };
+      });
+      // Mentions : appui long pour retirer, « + Ajouter » pour en mettre une.
+      panel.querySelectorAll('[data-mention]').forEach(badge => onLongPress(badge, () => {
+        const label = badge.textContent;
+        if (!confirm(`Retirer la mention « ${label} » ?`)) return;
+        if (!saveEntry(group, term, student.id, item => { item.mentions = item.mentions.filter(key => key !== badge.dataset.mention); })) return status('Enregistrement impossible.');
+        reload();
+      }));
+      const add = panel.querySelector('#conseilAddMention');
+      if (add) add.onclick = () => { const box = panel.querySelector('#conseilMentionChoices'); box.hidden = !box.hidden; };
+      panel.querySelectorAll('[data-add-mention]').forEach(button => button.onclick = () => {
+        if (!saveEntry(group, term, student.id, item => { item.mentions = BULLETIN_MENTIONS.map(([key]) => key).filter(key => item.mentions.includes(key) || key === button.dataset.addMention); })) return status('Enregistrement impossible.');
+        reload();
+      });
+      // Note libre du conseil : enregistrée en tapant.
+      let noteTimer;
+      const note = panel.querySelector('#conseilNote');
+      const saveNote = () => { clearTimeout(noteTimer); saveEntry(group, term, student.id, item => { item.conseilNote = note.value.slice(0, 1000); }); };
+      note.oninput = () => { clearTimeout(noteTimer); noteTimer = setTimeout(saveNote, 500); };
+      note.onblur = saveNote;
+    }
     panel.querySelector('#conseilValid').onchange = event => {
       if (!setValidated(group, term, student.id, event.target.checked)) {
         event.target.checked = !event.target.checked;
         panel.querySelector('#conseilStatus').textContent = 'Enregistrement impossible.';
         return;
       }
-      fiche(panel, group, term, students, index, onExit);
+      panel.querySelector('.conseil-fiche').classList.toggle('is-valid', event.target.checked);
+      const badge = panel.querySelector('.cbox-identity .tone-valid');
+      if (event.target.checked && !badge) panel.querySelector('.cbox-identity div').insertAdjacentHTML('beforeend', '<span class="cbadge tone-valid">✓ Validé</span>');
+      if (!event.target.checked && badge) badge.remove();
     };
     const go = () => next ? fiche(panel, group, term, students, index + 1, onExit) : render(panel, group, term, students, onExit);
     (panel.querySelector('#conseilNext') || panel.querySelector('#conseilEnd')).onclick = go;

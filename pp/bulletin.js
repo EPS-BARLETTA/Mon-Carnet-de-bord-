@@ -151,14 +151,21 @@ const PronoteBulletin = (() => {
     return {...info, subjects, life, continued: !titleRow};
   }
 
-  async function readPdf(buffer) {
-    const lib = await library();
+  // Évite une attente sans fin si le moteur PDF ne répond pas (vieux Safari, mémoire).
+  const within = (promise, seconds, message) => Promise.race([promise,
+    new Promise((resolve, reject) => setTimeout(() => reject(Error(message)), seconds * 1000))]);
+
+  async function readPdf(buffer, onProgress = () => {}) {
+    onProgress('Chargement du lecteur PDF…');
+    const lib = await within(library(), 40, 'Le lecteur PDF ne se charge pas. Ferme complètement l’app, rouvre-la avec du réseau, puis réessaie.');
+    onProgress('Ouverture du PDF…');
     const task = lib.getDocument({data: new Uint8Array(buffer), isEvalSupported: false, useSystemFonts: true});
-    const doc = await task.promise;
+    const doc = await within(task.promise, 60, 'Le PDF ne s’ouvre pas (fichier trop lourd ou protégé ?).');
     const bulletins = [];
     for (let index = 1; index <= doc.numPages; index++) {
-      const page = await doc.getPage(index);
-      const content = await page.getTextContent();
+      onProgress(`Lecture de la page ${index} sur ${doc.numPages}…`);
+      const page = await within(doc.getPage(index), 60, `La page ${index} ne se lit pas.`);
+      const content = await within(page.getTextContent(), 60, `La page ${index} ne se lit pas.`);
       const parsed = parsePage(lines(content.items));
       const previous = bulletins[bulletins.length - 1];
       if (parsed.continued && previous) {

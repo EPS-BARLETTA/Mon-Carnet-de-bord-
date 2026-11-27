@@ -85,6 +85,7 @@ function renderBulletins(group, term, students, principal) {
   let index = 0;
   let reading = false;
   let current;
+  let lastProposal = '';
   students.forEach((student, i) => picker.add(new Option(student.name, String(i))));
 
   function showReading(entry) {
@@ -102,6 +103,7 @@ function renderBulletins(group, term, students, principal) {
     next.disabled = index === students.length - 1;
     $('bulletinIdentity').replaceChildren(RosterPortraits.photo(student.portrait), carnetStudentName(group, term, student));
     remark.value = current[principal ? 'conseil' : 'eps'];
+    lastProposal = '';
     if (!principal) $('bulletinSummary').innerHTML = bulletinNotesSummary(group, term, student.id);
     copy.disabled = !remark.value.trim();
     if (principal) {
@@ -109,12 +111,25 @@ function renderBulletins(group, term, students, principal) {
       for (const check of checks) check.checked = current.mentions.includes(check.value);
       PPPanel.resetVariant();
       PPPanel.render($('ppPanel'), {group, term, student, locked: carnetTermLocked(group, term),
+        hasRemark: () => Boolean(remark.value.trim()),
+        currentRemark: () => remark.value.trim(),
         onRemark(text) {
-          if (remark.value.trim() && remark.value.trim() !== text && !confirm('Remplacer l’appréciation déjà écrite par la proposition ?')) return;
+          // Pas de confirmation quand on reformule une proposition non retouchée.
+          const own = remark.value.trim() && remark.value.trim() !== lastProposal;
+          if (own && remark.value.trim() !== text && !confirm('Remplacer l’appréciation déjà écrite par la proposition ?')) return;
+          lastProposal = text;
           remark.value = text;
           copy.disabled = !text.trim();
           commit();
           remark.focus();
+        },
+        onClearRemark() {
+          if (remark.value.trim() && remark.value.trim() !== lastProposal && !confirm('Effacer l’appréciation générale de cet élève ?')) return;
+          remark.value = '';
+          lastProposal = '';
+          copy.disabled = true;
+          commit();
+          status.textContent = 'Remarque effacée.';
         },
         onMention(key) {
           for (const check of checks) check.checked = check.value === key ? true : check.checked;
@@ -182,7 +197,17 @@ function renderBulletins(group, term, students, principal) {
     event.preventDefault();
     if (!locked && commit()) status.textContent = 'Fiche enregistrée sur cet appareil.';
   };
-  remark.oninput = () => { copy.disabled = !remark.value.trim(); };
+  remark.oninput = () => {
+    copy.disabled = !remark.value.trim();
+    const panel = $('ppPanel');
+    if (panel) {
+      const has = Boolean(remark.value.trim());
+      const button = panel.querySelector('.pp-remark');
+      if (button) button.textContent = has ? 'Reformuler la remarque' : 'Proposer une remarque';
+      const clear = panel.querySelector('.pp-remark-clear');
+      if (clear) clear.hidden = !has;
+    }
+  };
   copy.onclick = async () => {
     try {
       await navigator.clipboard.writeText(remark.value);

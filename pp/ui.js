@@ -94,7 +94,8 @@ const PPPanel = (() => {
       </div>
       ${locked ? '' : `<div class="pp-propose">
         <div class="actions">
-          <button type="button" class="primary pp-remark">Proposer une remarque</button>
+          <button type="button" class="primary pp-remark">${context.hasRemark?.() ? 'Reformuler la remarque' : 'Proposer une remarque'}</button>
+          <button type="button" class="pp-remark-clear"${context.hasRemark?.() ? '' : ' hidden'}>Effacer la remarque</button>
           ${ia?.remarque ? '<button type="button" class="pp-remark-ia">Remarque de l’IA</button>' : ''}
         </div>
         ${suggestion(ia?.mention && ia.mention !== 'aucune' ? ia.mention : result.mention, ia?.justification)}
@@ -112,26 +113,59 @@ const PPPanel = (() => {
   function bind(container, context, result, bulletin) {
     const {group, term, student} = context;
     const status = container.querySelector('.pp-status');
-    container.querySelector('.pp-import')?.addEventListener('click', () => container.querySelector('.pp-file').click());
+    const importButton = container.querySelector('.pp-import');
+    importButton?.addEventListener('click', () => container.querySelector('.pp-file').click());
     container.querySelector('.pp-file')?.addEventListener('change', async event => {
       const files = [...event.target.files];
       event.target.value = '';
-      if (!files.length) return;
-      status.textContent = 'Lecture des bulletins…';
+      if (!files.length) {
+        status.textContent = 'Aucun fichier choisi.';
+        return;
+      }
+      // Retour bien visible pendant la lecture, pour ne jamais rester sans réponse.
+      status.classList.add('pp-busy');
+      if (importButton) importButton.disabled = true;
+      const say = text => { status.textContent = text; };
+      say(`Fichier reçu : ${files.map(file => file.name).join(', ')}`);
+      status.scrollIntoView({block: 'center', behavior: 'smooth'});
       try {
         const found = [];
-        for (const file of files) found.push(...await PronoteBulletin.readPdf(await file.arrayBuffer()));
-        if (!found.length) throw Error('Aucun bulletin reconnu dans ce PDF.');
+        for (const file of files) {
+          if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) throw Error(`« ${file.name} » n’est pas un PDF.`);
+          found.push(...await PronoteBulletin.readPdf(await file.arrayBuffer(), say));
+        }
+        if (!found.length) throw Error('Aucun bulletin reconnu dans ce PDF. Est-ce bien le PDF des bulletins exporté depuis PRONOTE ?');
         render(container, context, importBulletins(context, found));
       } catch (error) {
-        status.textContent = error.message || 'Lecture impossible.';
+        say(`Import impossible : ${error.message || 'lecture impossible.'}`);
+        status.classList.add('pp-error');
+      } finally {
+        status.classList.remove('pp-busy');
+        if (importButton) importButton.disabled = false;
       }
     });
+    const refresh = () => {
+      const has = Boolean(context.hasRemark?.());
+      const button = container.querySelector('.pp-remark');
+      if (button) button.textContent = has ? 'Reformuler la remarque' : 'Proposer une remarque';
+      const clear = container.querySelector('.pp-remark-clear');
+      if (clear) clear.hidden = !has;
+    };
     container.querySelector('.pp-remark')?.addEventListener('click', () => {
-      context.onRemark(PPAnalyse.remark(result, student.name, variant++));
+      // Reformuler : une autre formulation à chaque appui, différente du texte actuel.
+      const current = context.currentRemark?.() || '';
+      let text = PPAnalyse.remark(result, student.name, variant++);
+      for (let i = 0; i < 6 && text === current; i++) text = PPAnalyse.remark(result, student.name, variant++);
+      context.onRemark(text);
+      refresh();
+    });
+    container.querySelector('.pp-remark-clear')?.addEventListener('click', () => {
+      context.onClearRemark?.();
+      refresh();
     });
     container.querySelector('.pp-remark-ia')?.addEventListener('click', () => {
       context.onRemark(String(bulletin.ia.remarque).replaceAll('[Prénom]', PPAnalyse.firstName(student.name)));
+      refresh();
     });
     container.querySelector('.pp-ia-clear')?.addEventListener('click', () => {
       const {ia, ...rest} = bulletin;

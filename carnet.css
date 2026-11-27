@@ -190,3 +190,9 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .bulletin-off { opacity: .6; }
 
 .evaluations-list a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* Import des bulletins PDF : état bien visible */
+.pp-status.pp-busy { color: #1f4f82; font-weight: 700; }
+.pp-status.pp-busy::before { content: ''; display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pp-spin .8s linear infinite; }
+.pp-status.pp-error { color: #a1271b; font-weight: 700; }
+@keyframes pp-spin { to { transform: rotate(360deg); } }

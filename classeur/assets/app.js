@@ -357,7 +357,7 @@ function bilanStats(c,tri){
  return {n,means,mean,html:'<div><strong>'+means.length+'/'+n+'</strong>élèves avec une moyenne</div><div><strong>'+(mean===null?"–":fr(mean))+'</strong>moyenne de classe</div><div><strong>'+(means.length?fr(Math.min(...means))+" à "+fr(Math.max(...means)):"–")+'</strong>moyenne min. à max.</div>'};
 }
 const STUDENT_TAGS=[["investi","Investi·e"],["discret","Discret·ète"],["progres","En progrès"],["comportement","Comportement à revoir"],["implication","Manque d’implication"],["arrive","Arrivé·e en cours de trimestre"]];
-const CLASS_TAGS=[["agreable","Agréable"],["travailleuse","Travailleuse"],["dissipee","Dissipée"],["heterogene","Résultats hétérogènes"]];
+const CLASS_TAGS=[["agreable","Agréable"],["serieuse","Sérieuse"],["travailleuse","Travailleuse"],["dynamique","Dynamique"],["motivee","Motivée"],["solidaire","Solidaire"],["efficace","Fait le travail"],["energique","Énergivore, à canaliser"],["bavarde","Bavarde"],["dissipee","Dissipée"],["passive","Passive"],["heterogene","Résultats hétérogènes"]];
 const tagBtn=(target,k,label,on)=>'<button type="button" class="remark-tag" aria-pressed="'+on+'" data-action="bilan-tag:'+esc(target)+':'+k+'">'+label+'</button>';
 const countLabel=v=>plural(String(v||"").length,"caractère");
 function bilanPage(){
@@ -441,16 +441,18 @@ const tierOf=m=>m===null?null:m>=17.5?"A":m>=16?"B":m>=14?"C":m>=12?"D":m>=10?"E
 const apsaLabel=n=>/^\p{Lu}\p{Ll}/u.test(n)?n.charAt(0).toLocaleLowerCase("fr")+n.slice(1):n;
 /* Jamais deux appréciations identiques dans la classe : on tire une autre formulation tant que le texte existe déjà chez un autre élève. */
 function studentProposal(c,tri,s){
- const b=bilanOf(c,tri),norm=x=>String(x||"").trim().toLocaleLowerCase("fr");
- const others=new Set(Object.entries(b.remarks).filter(([id])=>id!==s.id).map(([,v])=>norm(v)).filter(Boolean));
- let text="";for(let i=0;i<16;i++){text=studentProposalOnce(c,tri,s);if(!others.has(norm(text)))break}
+ const b=bilanOf(c,tri),norm=(x,id)=>{let t=String(x||"").trim().toLocaleLowerCase("fr");const st=c.students.find(y=>y.id===id),f=st&&firstName(st);if(f)t=t.split(f.toLocaleLowerCase("fr")).join("§");return t};
+ /* Identique au prénom près (« Un trimestre remarquable pour Amaury… » / « … pour Victor… ») = doublon aussi. */
+ const others=new Set(Object.entries(b.remarks).filter(([id])=>id!==s.id).map(([id,v])=>norm(v,id)).filter(Boolean));
+ let text="";for(let i=0;i<24;i++){text=studentProposalOnce(c,tri,s);if(!others.has(norm(text,s.id)))break}
  return text;
 }
 function studentProposalOnce(c,tri,s){
  const b=bilanOf(c,tri),tags=b.tags[s.id]||[],has=k=>tags.includes(k),P=firstName(s)||"l’élève",G=(m,f)=>s.sex==="F"?f:m,il=G("il","elle");
  const notes=bilanNotes(c,tri,s.id),m=retainedMean(c,tri,s.id),tier=tierOf(m),t3=tri==="T3";
  const key=s.id+tri,turn=proposalTurns[key]=(proposalTurns[key]??-1)+1,seed=hashStr(key)+turn;
- const pick=(list,k=0)=>list[(seed+k*7)%list.length];
+ /* Chaque morceau de phrase est tiré indépendamment : bien plus de combinaisons différentes. */
+ const pick=(list,k=0)=>list[(k?hashStr(seed+":"+k):seed)%list.length];
  if(m===null){
   if(has("arrive"))return G("Arrivé","Arrivée")+" en cours de trimestre, "+P+" n’a pas pu être "+G("évalué","évaluée")+". "+(t3?"Je lui souhaite une bonne continuation.":"Je compte sur son implication pour aborder sereinement le prochain trimestre.");
   if(notes.length&&notes.every(x=>x.status==="dispense"))return G("Élève dispensé","Élève dispensée")+" lors des évaluations ce trimestre.";
@@ -499,18 +501,29 @@ function studentProposalOnce(c,tri,s){
  parts.push(close);
  return parts.join(" ");
 }
+/* Appréciation de la classe : se compose à partir des traits cochés (qualités, points de vigilance, efficacité). */
 function classProposal(c,tri){
  const b=bilanOf(c,tri),has=k=>b.classTags.includes(k),st=bilanStats(c,tri),tier=tierOf(st.mean)||"C",t3=tri==="T3",good="ABCD".includes(tier);
  const key=c.id+tri,turn=proposalTurns[key]=(proposalTurns[key]??-1)+1,seed=hashStr(key)+turn,pick=(list,k=0)=>list[(seed+k*7)%list.length];
- const qual=[has("agreable")&&"très agréable",has("travailleuse")&&"travailleuse"].filter(Boolean).join(" et ");
- const qualG=qual.replace(/travailleuse$/,"travailleur");
+ const and=list=>list.length<2?list.join(""):list.slice(0,-1).join(", ")+" et "+list.at(-1);
+ const QUAL={agreable:["très agréable","très agréable"],serieuse:["sérieuse","sérieux"],travailleuse:["travailleuse","travailleur"],dynamique:["dynamique","dynamique"],motivee:["motivée","motivé"],solidaire:["solidaire","solidaire"]};
+ const VIG={energique:["qui demande beaucoup d’énergie pour être canalisée","qui demande beaucoup d’énergie pour être canalisé"],bavarde:["souvent trop bavarde","souvent trop bavard"],dissipee:["trop souvent dissipée","trop souvent dissipé"],passive:["parfois trop passive","parfois trop passif"]};
+ const q=Object.keys(QUAL).filter(has),v=Object.keys(VIG).filter(has);
+ const fem=pick([true,false],1),noun=fem?"Une classe":pick(["Un groupe","Un groupe classe"],2),i=fem?0:1;
+ const Q=and(q.map(k=>QUAL[k][i])),V=and(v.map(k=>VIG[k][i]));
  const parts=[];
- if(has("dissipee"))parts.push(pick([(has("agreable")?"Classe sympathique mais":"Classe")+" trop souvent dissipée, ce qui freine les apprentissages.","Un groupe aux capacités réelles mais dont l’agitation pénalise le travail en cours."]));
- else if(t3){parts.push("Un trimestre à l’image de l’année scolaire, "+(good?"très satisfaisant":"perfectible")+" du point de vue du travail et de l’implication.");if(qual)parts.push("Un groupe classe "+qualG+" avec lequel il a été très intéressant de travailler.")}
- else if(qual)parts.push(pick(["Classe "+qual+" avec laquelle je prends un réel plaisir à enseigner.","Un groupe classe "+qualG+" avec lequel il est très intéressant de travailler."],1));
- else parts.push(pick(good?["Une classe sérieuse et impliquée dans la matière.","Un groupe classe sérieux dans l’ensemble."]:["Une classe qui doit se mobiliser davantage.","Un groupe qui doit s’impliquer davantage dans la matière."],2));
- if(has("heterogene"))parts.push("Les résultats restent hétérogènes : certains élèves doivent s’impliquer davantage.");
- if(!t3)parts.push(has("dissipee")||!good?"Des efforts sont attendus au prochain trimestre.":"Poursuivez ainsi.");
+ if(t3)parts.push("Un trimestre à l’image de l’année scolaire, "+(good?"très satisfaisant":"perfectible")+" du point de vue du travail et de l’implication.");
+ if(q.length&&v.length)parts.push(pick([noun+" "+Q+", mais "+V+".",noun+" "+Q+" mais "+V+"."],3));
+ else if(q.length){const pleasant=has("agreable")?"qu’il est très motivant de faire progresser":"qu’il est très agréable de faire progresser";parts.push(pick(fem?["Une classe "+Q+" avec laquelle je prends un réel plaisir à enseigner.","Une classe "+Q+" "+pleasant+".","Une classe "+Q+" avec laquelle il "+(t3?"a été":"est")+" très intéressant de travailler."]:[noun+" "+Q+" avec lequel il "+(t3?"a été":"est")+" très intéressant de travailler.",noun+" "+Q+" avec lequel je prends un réel plaisir à enseigner.",noun+" "+Q+" "+pleasant+"."],4))}
+ else if(v.length)parts.push(pick([noun+" "+V+", ce qui freine les apprentissages.",noun+" aux capacités réelles, mais "+V+"."],5));
+ else if(!t3)parts.push(pick(good?["Une classe sérieuse et impliquée dans la matière.","Un groupe classe sérieux dans l’ensemble.","Un groupe impliqué dans la matière."]:["Une classe qui doit se mobiliser davantage.","Un groupe qui doit s’impliquer davantage dans la matière."],2));
+ if(has("efficace"))parts.push(pick(v.length?["Malgré tout, les élèves font le travail demandé et les objectifs sont atteints.","Une fois lancés, les élèves font le travail et le font bien.","Le travail est néanmoins fait, et bien fait."]:["Le travail demandé est réalisé avec efficacité.","Les élèves font le travail demandé et les objectifs sont atteints."],6));
+ if(has("heterogene"))parts.push(pick(["Les résultats restent hétérogènes : certains élèves doivent s’impliquer davantage.","Des résultats hétérogènes : certains doivent encore se mobiliser."],7));
+ if(!t3){
+  if(v.length&&has("efficace"))parts.push(pick(["Plus de calme permettrait d’aller encore plus loin.","Il faudra gagner en concentration pour aller encore plus loin."],8));
+  else if(v.length||!good)parts.push("Des efforts sont attendus au prochain trimestre.");
+  else parts.push(pick(["Poursuivez ainsi.","Continuez ainsi.","Bonne continuation."],8));
+ }
  return parts.join(" ");
 }
 function setRemark(target,text){

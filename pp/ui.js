@@ -113,19 +113,35 @@ const PPPanel = (() => {
   function bind(container, context, result, bulletin) {
     const {group, term, student} = context;
     const status = container.querySelector('.pp-status');
-    container.querySelector('.pp-import')?.addEventListener('click', () => container.querySelector('.pp-file').click());
+    const importButton = container.querySelector('.pp-import');
+    importButton?.addEventListener('click', () => container.querySelector('.pp-file').click());
     container.querySelector('.pp-file')?.addEventListener('change', async event => {
       const files = [...event.target.files];
       event.target.value = '';
-      if (!files.length) return;
-      status.textContent = 'Lecture des bulletins…';
+      if (!files.length) {
+        status.textContent = 'Aucun fichier choisi.';
+        return;
+      }
+      // Retour bien visible pendant la lecture, pour ne jamais rester sans réponse.
+      status.classList.add('pp-busy');
+      if (importButton) importButton.disabled = true;
+      const say = text => { status.textContent = text; };
+      say(`Fichier reçu : ${files.map(file => file.name).join(', ')}`);
+      status.scrollIntoView({block: 'center', behavior: 'smooth'});
       try {
         const found = [];
-        for (const file of files) found.push(...await PronoteBulletin.readPdf(await file.arrayBuffer()));
-        if (!found.length) throw Error('Aucun bulletin reconnu dans ce PDF.');
+        for (const file of files) {
+          if (!/pdf$/i.test(file.type) && !/\.pdf$/i.test(file.name)) throw Error(`« ${file.name} » n’est pas un PDF.`);
+          found.push(...await PronoteBulletin.readPdf(await file.arrayBuffer(), say));
+        }
+        if (!found.length) throw Error('Aucun bulletin reconnu dans ce PDF. Est-ce bien le PDF des bulletins exporté depuis PRONOTE ?');
         render(container, context, importBulletins(context, found));
       } catch (error) {
-        status.textContent = error.message || 'Lecture impossible.';
+        say(`Import impossible : ${error.message || 'lecture impossible.'}`);
+        status.classList.add('pp-error');
+      } finally {
+        status.classList.remove('pp-busy');
+        if (importButton) importButton.disabled = false;
       }
     });
     const refresh = () => {

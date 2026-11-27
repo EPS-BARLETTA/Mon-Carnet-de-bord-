@@ -131,12 +131,11 @@ function renderCarnet(group, tab, term) {
         <div id="carnetStudentIdentity"></div>
         <form method="dialog"><button autofocus>Fermer la fiche</button></form>
       </header>
-      <label for="carnetStudentTerm">Trimestre</label>
-      <select id="carnetStudentTerm">
-        <option value="1">Trimestre 1</option>
-        <option value="2">Trimestre 2</option>
-        <option value="3">Trimestre 3</option>
-      </select>
+      <div class="sp-terms" role="group" aria-label="Trimestre">
+        <button type="button" data-sp-term="1">Trimestre 1</button>
+        <button type="button" data-sp-term="2">Trimestre 2</button>
+        <button type="button" data-sp-term="3">Trimestre 3</button>
+      </div>
       <div id="carnetStudentDetails"></div>
     </dialog>
     <dialog id="carnetTermDialog" aria-labelledby="carnetTermTitle">
@@ -267,49 +266,65 @@ function carnetStudentDetails(group, term, studentId) {
   const appreciation = bulletinEntry(group, term, studentId);
   const notes = ClasseurNotes.student(group, term, studentId);
   const tags = notes.tags.map(tag => ClasseurNotes.TAGS[tag]).filter(Boolean);
-  return `<section>
-    <h3>Suivi de l’appel</h3>
-    <dl class="student-profile-counts">
-      <div><dt>Appels saisis</dt><dd>${calls.length}</dd></div>
-      <div><dt>Absences</dt><dd>${counts.absences}</dd></div>
-      <div><dt>Oublis de tenue</dt><dd>${counts.forgot}</dd></div>
-      <div><dt>Séances dispensées</dt><dd>${counts.exempt}</dd></div>
-    </dl>
-    ${history.length ? `<ul class="student-profile-list">${history.join('')}</ul>` : '<p class="muted">Aucune absence, dispense de séance ou tenue oubliée dans les appels de ce trimestre.</p>'}
-    ${periods.length ? `<h4>Dispenses longue durée</h4><ul class="student-profile-list">${[...periods].sort((a, b) => b.start.localeCompare(a.start)).map(period =>
-      `<li>Du ${esc(carnetDate(period.start))} au ${esc(carnetDate(period.end))}</li>`).join('')}</ul>` : ''}
-  </section>
-  <section>
-    <h3>Évaluations du trimestre</h3>
-    ${notes.rows.length ? `<ul class="student-profile-list">${notes.rows.map(row => `<li${row.coef > 0 ? '' : ' class="bulletin-off"'}><span>${esc(row.name)}${row.coef <= 0 ? ` <small class="muted">(${row.formative && !row.kept ? 'formative, ' : ''}non comptée)</small>` : row.coef !== 1 ? ` <small class="muted">Coef. ${carnetNumber(row.coef)}</small>` : ''}${row.comment ? `<br><small class="muted">${esc(row.comment)}</small>` : ''}</span>
-        <strong>${row.statusLabel ? esc(row.statusLabel) : row.note !== null ? `${ClasseurNotes.format(row.note)} / 20` : row.missing ? `${row.missing} compétence${row.missing > 1 ? 's' : ''} à évaluer` : 'Non évalué'}</strong></li>`).join('')}</ul>
-      <p class="student-profile-mean"><strong>Moyenne du trimestre</strong> · ${ClasseurNotes.format(notes.retained)} / 20${notes.overridden ? ` <small class="muted">(retenue ; calculée : ${ClasseurNotes.format(notes.computed)})</small>` : ''}</p>
-      ${tags.length ? `<p class="muted">${esc(tags.join(' · '))}</p>` : ''}`
-      : '<p class="muted">Aucune évaluation pour ce trimestre.</p>'}
-    ${evaluations.length ? `<h4>Anciennes notes du carnet</h4>` : ''}
-    ${evaluations.length ? `<ul class="student-profile-list">${evaluations.map(item => {
-      const score = item.scores[studentId];
-      return `<li><span>${esc(item.name)} <small class="muted">Coef. ${carnetNumber(item.weight)}</small></span>
-        <strong>${Number.isFinite(score) ? `${carnetNumber(score)} / ${carnetNumber(item.maximum)}` : 'Non renseignée'}</strong></li>`;
-    }).join('')}</ul><p><strong>Moyenne / 20</strong> · ${carnetAverage(evaluations, studentId)}</p>` : ''}
-  </section>
-  <section>
-    <h3>Appréciations</h3>
-    <h4>EPS</h4><p class="student-profile-text">${esc(appreciation.eps || 'Aucune appréciation saisie.')}</p>
-    ${group.principal === true ? `<h4>Conseil de classe</h4><p class="student-profile-text">${esc(appreciation.conseil || 'Aucune appréciation saisie.')}</p>` : ''}
-  </section>`;
+  const mean = notes.retained;
+  const toneOf = value => value === null || value === undefined ? 'grey' : value >= 16 ? 'green' : value >= 12 ? 'blue' : value >= 10 ? 'orange' : 'red';
+  const kind = text => /Absent/.test(text) ? 'red' : /Oubli/.test(text) ? 'orange' : 'blue';
+  const tile = (label, value, tone) => `<div class="cbox cbox-figure tone-${tone}"><span>${label}</span><strong>${value}</strong></div>`;
+  return `<div class="sp-figures">
+      ${tile('Moyenne du trimestre', mean === null ? '–' : ClasseurNotes.format(mean), toneOf(mean))}
+      ${tile('Absences', counts.absences, counts.absences ? 'red' : 'grey')}
+      ${tile('Oublis de tenue', counts.forgot, counts.forgot ? 'orange' : 'grey')}
+      ${tile('Séances dispensées', counts.exempt, counts.exempt ? 'blue' : 'grey')}
+    </div>
+    ${notes.overridden ? `<p class="muted sp-note">Moyenne retenue ; calculée : ${ClasseurNotes.format(notes.computed)}</p>` : ''}
+
+    <div class="cbox cbox-list tone-grey">
+      <h3>Suivi de l’appel <small class="muted">· ${calls.length} appel${calls.length > 1 ? 's' : ''} saisi${calls.length > 1 ? 's' : ''}</small></h3>
+      ${history.length ? `<ul class="sp-history">${history.map(item => {
+        const [, date, label] = item.match(/<strong>(.*?)<\/strong><span>(.*?)<\/span>/) || [];
+        return `<li><span class="sp-date">${date}</span><span class="cbadge tone-${kind(label)}">${label}</span></li>`;
+      }).join('')}</ul>` : '<p class="muted">Aucune absence, dispense de séance ni tenue oubliée ce trimestre.</p>'}
+      ${periods.length ? `<h4>Dispenses longue durée</h4><ul class="sp-history">${[...periods].sort((a, b) => b.start.localeCompare(a.start)).map(period =>
+        `<li><span class="sp-date">Du ${esc(carnetDate(period.start))} au ${esc(carnetDate(period.end))}</span><span class="cbadge tone-blue">Dispense longue</span></li>`).join('')}</ul>` : ''}
+    </div>
+
+    <div class="cbox cbox-list tone-green">
+      <h3>Évaluations du trimestre</h3>
+      ${notes.rows.length ? `<ul class="sp-evals">${notes.rows.map(row => {
+        const off = row.coef <= 0;
+        const value = row.statusLabel ? esc(row.statusLabel) : row.note !== null ? `${ClasseurNotes.format(row.note)}<small> / 20</small>` : row.missing ? `${row.missing} compétence${row.missing > 1 ? 's' : ''} à évaluer` : 'Non évalué';
+        return `<li${off ? ' class="bulletin-off"' : ''}><span><strong>${esc(row.name)}</strong>
+            ${off ? `<small class="muted">${row.formative && !row.kept ? 'formative, ' : ''}non comptée</small>` : row.coef !== 1 ? `<small class="muted">coef. ${carnetNumber(row.coef)}</small>` : ''}
+            ${row.comment ? `<small class="muted sp-comment">${esc(row.comment)}</small>` : ''}</span>
+          <span class="sp-pill tone-${row.note !== null && !row.statusLabel ? toneOf(row.note) : 'grey'}">${value}</span></li>`;
+      }).join('')}</ul>
+      ${tags.length ? `<p class="muted">${esc(tags.join(' · '))}</p>` : ''}` : '<p class="muted">Aucune évaluation pour ce trimestre.</p>'}
+      ${evaluations.length ? `<h4>Anciennes notes du carnet</h4><ul class="sp-evals">${evaluations.map(item => {
+        const score = item.scores[studentId];
+        return `<li><span><strong>${esc(item.name)}</strong> <small class="muted">coef. ${carnetNumber(item.weight)}</small></span>
+          <span class="sp-pill tone-grey">${Number.isFinite(score) ? `${carnetNumber(score)} / ${carnetNumber(item.maximum)}` : 'Non renseignée'}</span></li>`;
+      }).join('')}</ul><p class="muted">Moyenne / 20 · ${carnetAverage(evaluations, studentId)}</p>` : ''}
+    </div>
+
+    <div class="cbox cbox-text tone-blue"><h3>Appréciation EPS</h3>
+      <p class="student-profile-text">${appreciation.eps ? esc(appreciation.eps) : '<span class="muted">Aucune appréciation saisie.</span>'}</p></div>
+    ${group.principal === true ? `<div class="cbox cbox-text tone-gold"><h3>Conseil de classe</h3>
+      <p class="student-profile-text">${appreciation.conseil ? esc(appreciation.conseil) : '<span class="muted">Aucune appréciation saisie.</span>'}</p></div>` : ''}`;
 }
 
 function showCarnetStudent(group, term, student) {
   const dialog = $('carnetStudentDialog');
-  const picker = $('carnetStudentTerm');
+  const picker = document.querySelector('#carnetStudentDialog .sp-terms');
   const heading = document.createElement('h2');
   heading.id = 'carnetStudentTitle';
   heading.textContent = student.name;
   $('carnetStudentIdentity').replaceChildren(RosterPortraits.photo(student.portrait), heading);
-  picker.value = term;
-  picker.onchange = () => { $('carnetStudentDetails').innerHTML = carnetStudentDetails(group, picker.value, student.id); };
-  picker.onchange();
+  const show = value => {
+    picker.querySelectorAll('[data-sp-term]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.spTerm === String(value))));
+    $('carnetStudentDetails').innerHTML = carnetStudentDetails(group, String(value), student.id);
+  };
+  picker.querySelectorAll('[data-sp-term]').forEach(button => { button.onclick = () => show(button.dataset.spTerm); });
+  show(term);
   dialog.showModal();
   dialog.scrollTop = 0;
 }

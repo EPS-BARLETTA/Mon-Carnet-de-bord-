@@ -277,3 +277,31 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .conseil-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5d9ad; }
 .conseil-choices button { border: 0; cursor: pointer; }
 @media (max-width: 600px) { .conseil-bottom { grid-template-columns: 1fr; } }
+
+/* Fiche élève en encadrés */
+.student-profile { width: min(calc(100% - 24px), 720px); background: #f6f8fa; }
+.student-profile-head .pf-roster-photo { width: 64px; height: 80px; object-fit: cover; border-radius: 10px; box-shadow: 0 2px 8px rgb(0 0 0 / 15%); display: grid; place-items: center; }
+.sp-terms { display: inline-flex; gap: 4px; padding: 4px; margin: 8px 0 4px; background: #e6ecf1; border-radius: 12px; }
+.sp-terms button { border: 0; background: transparent; border-radius: 9px; padding: 8px 14px; font-weight: 600; color: #3b4b5c; min-height: 40px; }
+.sp-terms button[aria-pressed="true"] { background: #fff; color: #14293e; box-shadow: 0 1px 4px rgb(0 0 0 / 12%); }
+.sp-figures { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 10px; margin: 12px 0 4px; }
+.sp-figures .cbox { margin: 0; padding: 10px 8px; }
+.sp-figures .cbox-figure strong { font-size: 1.6rem; }
+.sp-figures .cbox-figure:first-child strong { font-size: 2rem; }
+.cbox-figure.tone-blue strong { color: #1f4f82; } .cbox-figure.tone-red strong { color: #8f2318; }
+.cbox.tone-grey { background: #fff; }
+.cbox.tone-gold { background: #fffcf0; }
+.sp-note { margin: 4px 0 0; font-size: .85rem; }
+.cbox .sp-history, .cbox .sp-evals { list-style: none; margin: 0; padding: 0; }
+.sp-history li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #eef2f5; }
+.sp-history li:last-child, .sp-evals li:last-child { border-bottom: 0; }
+.sp-date { font-weight: 700; }
+.sp-evals li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid #e3efe7; }
+.sp-evals li > span:first-child { display: grid; gap: 2px; }
+.sp-comment { font-style: italic; }
+.sp-pill { flex: none; padding: 5px 12px; border-radius: 99px; font-weight: 800; font-size: 1.05rem; background: #e8edf2; color: #2b3b4c; white-space: nowrap; }
+.sp-pill small { font-weight: 600; font-size: .75em; }
+.sp-pill.tone-green { background: #dff2e6; color: #1d6b40; } .sp-pill.tone-blue { background: #dce9f7; color: #1f4f82; }
+.sp-pill.tone-orange { background: #fde9d4; color: #8a4b0c; } .sp-pill.tone-red { background: #fadad6; color: #8f2318; }
+.student-profile .cbox h4 { margin: 12px 0 4px; font-size: .9rem; }
+@media (max-width: 600px) { .sp-figures { grid-template-columns: 1fr 1fr; } }

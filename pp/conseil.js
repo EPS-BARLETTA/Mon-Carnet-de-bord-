@@ -39,7 +39,7 @@ const PPConseil = (() => {
       <div class="conseil-head">
         <div><h2>Conseil de classe · trimestre ${esc(term)}</h2>
           <p class="muted"><strong>${done} / ${students.length}</strong> élève${students.length > 1 ? 's' : ''} validé${done > 1 ? 's' : ''}</p></div>
-        <button type="button" id="conseilExit">Retour aux fiches</button>
+        <button type="button" id="conseilExit" class="conseil-quit">✕ Quitter le mode conseil</button>
       </div>
       <div class="conseil-progress" aria-hidden="true"><span style="width:${students.length ? Math.round(done / students.length * 100) : 0}%"></span></div>
       <ul class="conseil-grid">${students.map((student, i) => {
@@ -59,28 +59,41 @@ const PPConseil = (() => {
     window.scrollTo({top: panel.getBoundingClientRect().top + window.scrollY - 12});
   }
 
+  const MENTION_TONE = {felicitations: 'gold', encouragements: 'green', travail: 'red', conduite: 'red', 'mise-en-garde': 'orange'};
+  const LEVEL_TONE = {excellent: 'green', tresbon: 'green', satisfaisant: 'blue', mitige: 'orange', fragile: 'red'};
+
   function fiche(panel, group, term, students, index, onExit) {
     const student = students[index];
     const next = students[index + 1];
     const locked = carnetTermLocked(group, term);
     const {entry, result, forts, faibles} = info(group, term, student);
+    const gap = result && result.average !== null && result.classAverage !== null ? Math.round((result.average - result.classAverage) * 100) / 100 : null;
+    const mentions = BULLETIN_MENTIONS.filter(([key]) => entry.mentions.includes(key));
     panel.innerHTML = `<section class="card conseil-fiche${entry.validated ? ' is-valid' : ''}">
       <div class="conseil-head">
         <button type="button" id="conseilBack">← Trombinoscope</button>
         <span class="muted">${index + 1} sur ${students.length}</span>
+        <button type="button" id="conseilQuit" class="conseil-quit">✕ Quitter le mode conseil</button>
       </div>
-      <div class="conseil-identity"><span id="conseilPhoto"></span><h2>${esc(student.name)}</h2></div>
+      <div class="cbox cbox-identity">
+        <span id="conseilPhoto"></span>
+        <div><h2>${esc(student.name)}</h2>
+          ${result ? `<span class="cbadge tone-${LEVEL_TONE[result.level] || 'blue'}">Bilan · ${PPAnalyse.LEVELS[result.level]}</span>` : '<span class="cbadge tone-grey">Pas de bulletin importé</span>'}
+          ${entry.validated ? '<span class="cbadge tone-valid">✓ Validé</span>' : ''}</div>
+      </div>
       ${result ? `<div class="conseil-figures">
-          <div><span>Moyenne générale</span><strong>${PPAnalyse.format(result.average)}</strong></div>
-          <div><span>Moyenne de la classe</span><strong>${PPAnalyse.format(result.classAverage)}</strong></div>
-          <div><span>Bilan</span><strong>${PPAnalyse.LEVELS[result.level]}</strong></div>
+          <div class="cbox cbox-figure tone-${gap === null ? 'blue' : gap >= 0 ? 'green' : 'orange'}"><span>Moyenne générale</span><strong>${PPAnalyse.format(result.average)}</strong></div>
+          <div class="cbox cbox-figure tone-grey"><span>Moyenne de la classe</span><strong>${PPAnalyse.format(result.classAverage)}</strong></div>
+          <div class="cbox cbox-figure tone-${gap === null ? 'grey' : gap >= 0 ? 'green' : 'orange'}"><span>Écart à la classe</span><strong>${gap === null ? '–' : (gap > 0 ? '+' : '') + PPAnalyse.format(gap)}</strong></div>
         </div>
-        <div class="conseil-points"><div><h3>Points forts</h3>${list(forts)}</div><div><h3>Points à travailler</h3>${list(faibles)}</div></div>`
-        : '<p class="muted">Aucun bulletin PRONOTE importé pour cet élève.</p>'}
-      <h3>Appréciation générale</h3>
-      <p class="conseil-text">${entry.conseil ? esc(entry.conseil) : '<span class="muted">Aucune appréciation saisie.</span>'}</p>
-      <h3>Mention</h3>
-      <p class="conseil-text">${esc(mentionsText(entry)) || '<span class="muted">Aucune mention.</span>'}</p>
+        <div class="conseil-points">
+          <div class="cbox cbox-list tone-green"><h3>👍 Points forts</h3>${list(forts)}</div>
+          <div class="cbox cbox-list tone-orange"><h3>🎯 Points à travailler</h3>${list(faibles)}</div>
+        </div>` : ''}
+      <div class="cbox cbox-text tone-blue"><h3>✍️ Appréciation générale</h3>
+        <p class="conseil-text">${entry.conseil ? esc(entry.conseil) : '<span class="muted">Aucune appréciation saisie.</span>'}</p></div>
+      <div class="cbox cbox-mention"><h3>🏅 Mention</h3>
+        <div>${mentions.length ? mentions.map(([key, label]) => `<span class="cbadge big tone-${MENTION_TONE[key]}">${esc(label)}</span>`).join(' ') : '<span class="muted">Aucune mention.</span>'}</div></div>
       <label class="conseil-validate"><input type="checkbox" id="conseilValid" ${entry.validated ? 'checked' : ''} ${locked ? 'disabled' : ''}> Validé au conseil</label>
       <div class="conseil-actions">
         ${next ? `<button type="button" class="primary" id="conseilNext">${esc(next.name)} →</button>` : '<button type="button" class="primary" id="conseilEnd">Fin de la liste · trombinoscope</button>'}
@@ -89,13 +102,14 @@ const PPConseil = (() => {
     </section>`;
     panel.querySelector('#conseilPhoto').replaceWith(RosterPortraits.photo(student.portrait));
     panel.querySelector('#conseilBack').onclick = () => render(panel, group, term, students, onExit);
+    panel.querySelector('#conseilQuit').onclick = () => { setOn(false); onExit(); };
     panel.querySelector('#conseilValid').onchange = event => {
       if (!setValidated(group, term, student.id, event.target.checked)) {
         event.target.checked = !event.target.checked;
         panel.querySelector('#conseilStatus').textContent = 'Enregistrement impossible.';
         return;
       }
-      panel.querySelector('.conseil-fiche').classList.toggle('is-valid', event.target.checked);
+      fiche(panel, group, term, students, index, onExit);
     };
     const go = () => next ? fiche(panel, group, term, students, index + 1, onExit) : render(panel, group, term, students, onExit);
     (panel.querySelector('#conseilNext') || panel.querySelector('#conseilEnd')).onclick = go;

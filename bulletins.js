@@ -19,6 +19,7 @@ function bulletinEntry(group, term, studentId) {
     memo: text('memo'),
     mentions: BULLETIN_MENTIONS.map(([key]) => key).filter(key => mentions.includes(key)),
     ...(entry?.validated ? {validated: true} : {}),
+    ...(typeof entry?.conseilNote === 'string' && entry.conseilNote.trim() ? {conseilNote: entry.conseilNote.slice(0, 1000)} : {}),
   };
 }
 
@@ -177,7 +178,7 @@ function renderBulletins(group, term, students, principal) {
     if (JSON.stringify(entry) === JSON.stringify(current)) return true;
     const studentId = students[index].id;
     const termEntries = {...group.bulletins?.[term]};
-    if (entry.eps || entry.conseil || entry.memo || entry.mentions.length || entry.validated) termEntries[studentId] = entry;
+    if (entry.eps || entry.conseil || entry.memo || entry.mentions.length || entry.validated || entry.conseilNote) termEntries[studentId] = entry;
     else delete termEntries[studentId];
     if (!carnetCommit(group, 'bulletins', {...group.bulletins, [term]: termEntries}, term)) {
       status.textContent = 'La fiche n’a pas été enregistrée. Tu peux encore copier le texte.';

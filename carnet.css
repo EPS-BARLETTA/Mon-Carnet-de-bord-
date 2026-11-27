@@ -261,3 +261,19 @@ mark.pp-neg { background: #fbdcdc; color: inherit; border-radius: 3px; padding: 
 .cbox-figure.tone-green strong { color: #1d6b40; } .cbox-figure.tone-orange strong { color: #a2560d; }
 .conseil-fiche.is-valid .cbox { box-shadow: none; }
 @media (max-width: 600px) { .conseil-figures, .conseil-points { grid-template-columns: 1fr; } }
+
+/* Mode conseil : validation + note libre, édition sur place, mentions */
+.conseil-bottom { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 12px; align-items: stretch; margin: 18px 0 6px; }
+.conseil-bottom .conseil-validate { margin: 0; }
+.conseil-note { display: grid; gap: 4px; padding: 8px 12px; border: 1px solid #d7dee6; border-radius: 14px; background: #fff; font-size: .9rem; color: #55667a; }
+.conseil-note textarea { border: 0; padding: 0; resize: vertical; font: inherit; font-size: 1rem; color: #1d2b3a; background: transparent; min-height: 2.6em; }
+.conseil-note textarea:focus { outline: none; }
+.conseil-note:focus-within { border-color: #3d8bd9; box-shadow: 0 0 0 3px rgb(61 139 217 / 18%); }
+#conseilRemarkBox, .cbox-mention [data-mention] { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.cbox h3 small { font-weight: 400; font-size: .8rem; }
+.conseil-edit { width: 100%; font: inherit; font-size: 1.05rem; padding: 8px 10px; border: 1px solid #9cc4ec; border-radius: 10px; margin: 4px 0 8px; }
+.conseil-mentions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.conseil-add { border: 1px dashed #b89b3c; background: #fff; color: #6b5310; border-radius: 99px; padding: 6px 14px; font-weight: 700; }
+.conseil-choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e5d9ad; }
+.conseil-choices button { border: 0; cursor: pointer; }
+@media (max-width: 600px) { .conseil-bottom { grid-template-columns: 1fr; } }
